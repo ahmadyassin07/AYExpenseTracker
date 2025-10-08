@@ -114,21 +114,70 @@ code {
 }
 
 
+/* Sidebar */
+.sidebar {
+    width: 260px; /* increased width */
+    min-height: 100vh;
+    background: linear-gradient(180deg, #001f3f, #003366);
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    padding: 1rem;
+    transition: all 0.3s ease;
+}
 
+.sidebar-header span {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
 
-/* Sidebar & Navbar Hover Styling */
+.user-info {
+    background-color: rgba(255, 255, 255, 0.1);
+    padding: 1rem;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-height: 60px;
+}
+
+    .user-info div {
+        overflow: hidden;
+    }
+
+    .user-info span {
+        display: block;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+/* Sidebar links */
 .nav-link {
-    transition: background-color 0.2s ease, color 0.2s ease;
+    color: #fff;
+    padding: 0.5rem 1rem;
     border-radius: 8px;
-    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.3s ease;
 }
 
     .nav-link:hover,
     .nav-link.active {
-        background-color: #0d6efd; /* Bootstrap primary blue */
+        background: #0d6efd;
         color: #fff !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
     }
-    .nav-link:hover {
-        background-color: rgba(255, 255, 255, 0.1);
-        color: #ffffff !important;
-    }
+
+/* Mobile sidebar */
+.sidebar-mobile {
+    background: linear-gradient(180deg, #001f3f, #003366);
+    color: #fff;
+}
+
+.navbar-mobile {
+    background: linear-gradient(90deg, #001f3f, #003366);
+    padding: 0.5rem 1rem;
+}
