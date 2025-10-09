@@ -4,23 +4,7 @@
     link.download = filename;
     link.click();
 }
- //Disable right-click on entire website
+// Disable right-click on entire website
 document.addEventListener('contextmenu', function (e) {
     e.preventDefault(); // Prevents right-click menu
-});
-
-
-
-// On page load, check redirect result
-window.addEventListener('load', async () => {
-    try {
-        const result = await auth.getRedirectResult();
-        if (result.user) {
-            const idToken = await result.user.getIdToken();
-            // Pass idToken back to Blazor via interop
-            DotNet.invokeMethodAsync('AYExpenseTracker', 'ReceiveGoogleIdToken', idToken);
-        }
-    } catch (err) {
-        console.error("Redirect Result Error:", err);
-    }
 });

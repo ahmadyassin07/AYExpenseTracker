@@ -14,18 +14,23 @@
 </head>
 
 <body>
-    <div id="app"></div>
+    <div id="app">
+        <svg class="loading-progress">
+            <circle r="40%" cx="50%" cy="50%" />
+            <circle r="40%" cx="50%" cy="50%" />
+        </svg>
+        <div class="loading-progress-text"></div>
+    </div>
 
     <div id="blazor-error-ui">
         An unhandled error has occurred.
         <a href="." class="reload">Reload</a>
         <span class="dismiss">🗙</span>
     </div>
-
     <script src="_framework/blazor.webassembly.js"></script>
     <script src="js/site.js"></script>
 
-    <!-- XLSX -->
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script>
         window.downloadExcelFromBlazor = function (filename, json) {
@@ -36,12 +41,13 @@
         };
     </script>
 
-    <!-- Chart.js -->
+
+
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
         window.renderExpensesChart = (ctxId, labels, data) => {
             const ctx = document.getElementById(ctxId).getContext('2d');
-            if (window.myChart) window.myChart.destroy();
+            if (window.myChart) window.myChart.destroy(); // destroy previous chart if exists
             window.myChart = new Chart(ctx, {
                 type: 'bar',
                 data: {
@@ -68,71 +74,9 @@
         };
     </script>
 
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
 
-    <script>
-        const firebaseConfig = {
-            apiKey: "AIzaSyBclK8VdNQN8GUFVyADmX_--bWJSFb7-Dk",
-            authDomain: "ayexpensetracker.firebaseapp.com",
-            projectId: "ayexpensetracker"
-        };
-        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
 
-        // -------------------- ReCAPTCHA --------------------
-        window.initializeRecaptcha = function () {
-            if (!window.recaptchaVerifier) {
-                window.recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', {
-                    size: 'normal', // visible
-                    callback: function (response) {
-                        console.log('reCAPTCHA solved', response);
-                    },
-                    'expired-callback': function () {
-                        console.log('reCAPTCHA expired, retry');
-                    }
-                });
-                window.recaptchaVerifier.render();
-            }
-        };
 
-        // -------------------- Phone OTP --------------------
-        window.sendPhoneOtp = async function (phoneNumber) {
-            try {
-                window.initializeRecaptcha();
-                const confirmationResult = await auth.signInWithPhoneNumber(phoneNumber, window.recaptchaVerifier);
-                window.confirmationResult = confirmationResult;
-                return true;
-            } catch (err) {
-                console.error("Phone OTP Error:", err);
-                return false;
-            }
-        };
-
-        window.verifyPhoneOtp = async function (code) {
-            try {
-                const result = await window.confirmationResult.confirm(code);
-                return await result.user.getIdToken();
-            } catch (err) {
-                console.error("OTP Verification Error:", err);
-                return null;
-            }
-        };
-
-        // -------------------- Google Login --------------------
-        window.signInWithGoogle = async function () {
-            try {
-                const provider = new firebase.auth.GoogleAuthProvider();
-                const result = await auth.signInWithPopup(provider);
-                const idToken = await result.user.getIdToken();
-                if (DotNet && DotNet.invokeMethodAsync) {
-                    await DotNet.invokeMethodAsync('AYExpenseTracker', 'ReceiveGoogleIdToken', idToken);
-                }
-            } catch (err) {
-                console.error("Google Sign-In Error:", err);
-            }
-        };
-    </script>
 </body>
+
 </html>
