@@ -15,11 +15,28 @@
 
 <body>
     <div id="app">
-        <svg class="loading-progress">
-            <circle r="40%" cx="50%" cy="50%" />
-            <circle r="40%" cx="50%" cy="50%" />
-        </svg>
-        <div class="loading-progress-text"></div>
+
+
+        <!-- Loading Animation -->
+        <div class="loading-container">
+            <svg class="loading-progress">
+                <defs>
+                    <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" stop-color="#00c6ff" />
+                        <stop offset="100%" stop-color="#0072ff" />
+                    </linearGradient>
+                </defs>
+                <circle class="track" r="45%" cx="50%" cy="50%" />
+                <circle class="progress" r="45%" cx="50%" cy="50%" />
+            </svg>
+            <div class="loading-text">Loading<span class="dots">...</span></div>
+        </div>
+
+
+
+
+
+
     </div>
 
     <div id="blazor-error-ui">
