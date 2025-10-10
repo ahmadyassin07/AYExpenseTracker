@@ -1,5 +1,11 @@
 html, body {
     font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+
+    background: linear-gradient(to bottom, #0a1f44, #001f3f);
+ 
+
+ 
+
 }
 
 h1:focus {
