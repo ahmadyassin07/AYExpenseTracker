@@ -6,5 +6,5 @@
 }
 // Disable right-click on entire website
 document.addEventListener('contextmenu', function (e) {
-    e.preventDefault(); // Prevents right-click menu
+  e.preventDefault(); // Prevents right-click menu
 });
