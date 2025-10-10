@@ -5,9 +5,9 @@
     link.click();
 }
 // Disable right-click on entire website
-document.addEventListener('contextmenu', function (e) {
-  e.preventDefault(); // Prevents right-click menu
-});
+//document.addEventListener('contextmenu', function (e) {
+//  e.preventDefault(); // Prevents right-click menu
+//});
 
 
 
