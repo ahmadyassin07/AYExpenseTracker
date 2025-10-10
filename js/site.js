@@ -51,3 +51,41 @@ function renderLineChart(id, labels, data) {
         options: { responsive: true, plugins: { legend: { display: false } } }
     });
 }
+
+
+
+window.exportInsightsPDF = async function () {
+    try {
+        const element = document.querySelector('.insights-container');
+        if (!element) return;
+
+        // Render the element to canvas
+        const canvas = await html2canvas(element, { scale: 2, useCORS: true });
+        const imgData = canvas.toDataURL('image/png');
+
+        const pdf = new window.jspdf.jsPDF('p', 'mm', 'a4');
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = pdf.internal.pageSize.getHeight();
+
+        const imgProps = pdf.getImageProperties(imgData);
+        const imgHeight = (imgProps.height * pdfWidth) / imgProps.width;
+
+        let heightLeft = imgHeight;
+        let position = 0;
+
+        // Add pages
+        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
+        heightLeft -= pdfHeight;
+
+        while (heightLeft > 0) {
+            position = heightLeft - imgHeight;
+            pdf.addPage();
+            pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
+            heightLeft -= pdfHeight;
+        }
+
+        pdf.save('insights.pdf');
+    } catch (err) {
+        console.error("PDF export failed:", err);
+    }
+};
