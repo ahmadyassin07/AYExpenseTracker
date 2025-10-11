@@ -1,25 +1,29 @@
-﻿function downloadFileFromBlazor(filename, base64) {
+﻿// =========================
+// Global chart instances
+// =========================
+const charts = {};
+
+// =========================
+// Download CSV from Blazor
+// =========================
+function downloadFileFromBlazor(filename, base64) {
     const link = document.createElement('a');
     link.href = 'data:text/csv;base64,' + base64;
     link.download = filename;
     link.click();
 }
-// Disable right-click on entire website
-//document.addEventListener('contextmenu', function (e) {
-//  e.preventDefault(); // Prevents right-click menu
-//});
 
-
-
-
-
-
-
-
-
+// =========================
+// Render Doughnut/Pie Chart
+// =========================
 function renderPieChart(id, labels, data) {
     const ctx = document.getElementById(id);
-    new Chart(ctx, {
+    if (!ctx) return;
+
+    // Destroy previous chart if exists
+    if (charts[id]) charts[id].destroy();
+
+    charts[id] = new Chart(ctx, {
         type: 'doughnut',
         data: {
             labels: labels,
@@ -29,13 +33,26 @@ function renderPieChart(id, labels, data) {
                 borderWidth: 1
             }]
         },
-        options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { position: 'bottom' }
+            }
+        }
     });
 }
 
+// =========================
+// Render Line Chart
+// =========================
 function renderLineChart(id, labels, data) {
     const ctx = document.getElementById(id);
-    new Chart(ctx, {
+    if (!ctx) return;
+
+    // Destroy previous chart if exists
+    if (charts[id]) charts[id].destroy();
+
+    charts[id] = new Chart(ctx, {
         type: 'line',
         data: {
             labels: labels,
@@ -48,12 +65,26 @@ function renderLineChart(id, labels, data) {
                 backgroundColor: 'rgba(0,198,255,0.15)'
             }]
         },
-        options: { responsive: true, plugins: { legend: { display: false } } }
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } }
+        }
     });
 }
 
+// =========================
+// Clear a chart
+// =========================
+function clearChart(canvasId) {
+    if (charts[canvasId]) {
+        charts[canvasId].destroy();
+        charts[canvasId] = null;
+    }
+}
 
-
+// =========================
+// Export Insights as PDF
+// =========================
 window.exportInsightsPDF = async function () {
     try {
         const element = document.querySelector('.insights-container');
@@ -73,10 +104,11 @@ window.exportInsightsPDF = async function () {
         let heightLeft = imgHeight;
         let position = 0;
 
-        // Add pages
+        // Add first page
         pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
         heightLeft -= pdfHeight;
 
+        // Add remaining pages if needed
         while (heightLeft > 0) {
             position = heightLeft - imgHeight;
             pdf.addPage();
@@ -89,3 +121,10 @@ window.exportInsightsPDF = async function () {
         console.error("PDF export failed:", err);
     }
 };
+
+// =========================
+// Optional: Disable right-click
+// =========================
+ document.addEventListener('contextmenu', function (e) {
+     e.preventDefault(); // Prevents right-click menu
+ });
