@@ -100,7 +100,26 @@
     </script>
 
 
-
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
+    <script>
+        window.ocr = {
+            recognize: async function (base64Image) {
+                try {
+                    const { data: { text } } = await Tesseract.recognize(
+                        base64Image,
+                        'eng',
+                        {
+                            logger: m => console.log(m) // optional logging
+                        }
+                    );
+                    return text;
+                } catch (err) {
+                    console.error(err);
+                    return "";
+                }
+            }
+        };
+    </script>
 
 </body>
 
