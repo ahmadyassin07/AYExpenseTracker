@@ -8,11 +8,29 @@ async function startCamera() {
             return;
         }
 
-        videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
+        // Detect if device is mobile or desktop
+        const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+        // Prefer back camera on mobile, fallback to front on PC
+        const constraints = {
+            video: isMobile
+                ? { facingMode: { ideal: "environment" } }  // back camera for mobile
+                : { facingMode: "user" },                   // front camera for desktop
+            audio: false
+        };
+
+        // Try to get the preferred camera
+        try {
+            videoStream = await navigator.mediaDevices.getUserMedia(constraints);
+        } catch (err) {
+            console.warn("⚠️ Preferred camera not available, using default.", err);
+            videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
+        }
+
         video.srcObject = videoStream;
         await video.play();
 
-        console.log("✅ Camera started successfully");
+        console.log(`✅ Camera started (${isMobile ? "mobile back camera" : "desktop camera"})`);
     } catch (err) {
         console.error("🚫 Error starting camera:", err);
         alert("Could not access camera. Please allow permissions and use HTTPS.");
@@ -37,7 +55,7 @@ function capturePhoto() {
 
             const dataUrl = canvas.toDataURL('image/png');
 
-            // stop camera after capture
+            // Stop the camera after capturing
             if (videoStream) {
                 videoStream.getTracks().forEach(track => track.stop());
                 console.log("📸 Camera stopped after capture");
