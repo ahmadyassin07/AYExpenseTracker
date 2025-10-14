@@ -8,18 +8,23 @@ async function startCamera() {
             return;
         }
 
+        // Stop any existing stream first
+        if (videoStream) {
+            videoStream.getTracks().forEach(track => track.stop());
+            videoStream = null;
+            console.log("🛑 Previous camera stream stopped");
+        }
+
         // Detect if device is mobile or desktop
         const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
-        // Prefer back camera on mobile, fallback to front on PC
         const constraints = {
             video: isMobile
-                ? { facingMode: { ideal: "environment" } }  // back camera for mobile
-                : { facingMode: "user" },                   // front camera for desktop
+                ? { facingMode: { ideal: "environment" } }
+                : { facingMode: "user" },
             audio: false
         };
 
-        // Try to get the preferred camera
         try {
             videoStream = await navigator.mediaDevices.getUserMedia(constraints);
         } catch (err) {
@@ -58,6 +63,7 @@ function capturePhoto() {
             // Stop the camera after capturing
             if (videoStream) {
                 videoStream.getTracks().forEach(track => track.stop());
+                videoStream = null; // Clear the reference
                 console.log("📸 Camera stopped after capture");
             }
 
