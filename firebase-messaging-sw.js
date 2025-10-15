@@ -29,14 +29,3 @@ messaging.onBackgroundMessage(function (payload) {
     self.registration.showNotification(notificationTitle, notificationOptions);
 });
 
-
-async function getFirebaseMessagingToken() {
-    try {
-        const messaging = firebase.messaging();
-        const token = await messaging.getToken({ vapidKey: 'BNirC1hfYrLi-DAApQcpC5LarYQshcFvmP50i-g6qXCHmuVFrdEpnc9f5Bus6eUSMI3eNAG5y_xbRz8w8rN75aI' });
-        return token;
-    } catch (err) {
-        console.error('Error getting FCM token', err);
-        return null;
-    }
-}

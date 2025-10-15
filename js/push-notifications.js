@@ -3,59 +3,37 @@ import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/fireb
 
 let messaging;
 
-// Initializes Firebase and the messaging service
 export function initialize(firebaseConfig) {
     const app = initializeApp(firebaseConfig);
     messaging = getMessaging(app);
 
-    // Optional: handle messages while the app is in the foreground
+    // Handle messages when app is in the foreground
     onMessage(messaging, (payload) => {
-        console.log('Message received while app is in foreground. ', payload);
-        // You could show a custom in-app toast here instead of a system notification
+        console.log('Foreground message received: ', payload);
         alert(`Notification: ${payload.notification.title}\n${payload.notification.body}`);
     });
 }
 
-// Requests permission and returns the FCM token if granted
-//export async function requestPermissionAndGetToken(vapidKey) {
-//    try {
-//        const permission = await Notification.requestPermission();
-//        if (permission === 'granted') {
-//            console.log('Notification permission granted.');
-//            // Get the token
-//            const fcmToken = await getToken(messaging, { vapidKey: vapidKey });
-//            if (fcmToken) {
-//                console.log("FCM Token:", fcmToken);
-//                return fcmToken;
-//            } else {
-//                console.log('No registration token available. Request permission to generate one.');
-//                return null;
-//            }
-//        } else {
-//            console.log('Unable to get permission to notify.');
-//            return null;
-//        }
-//    } catch (err) {
-//        console.error('An error occurred while retrieving token. ', err);
-//        return null;
-//    }
-//}
-
-
 export async function requestPermissionAndGetToken(vapidKey) {
     try {
         const permission = await Notification.requestPermission();
-        if (permission === 'granted') {
-            console.log('Notification permission granted.');
-            const fcmToken = await getToken(messaging, { vapidKey: vapidKey });
-            if (fcmToken) {
-                console.log("FCM Token:", fcmToken);
-                return fcmToken;
-            }
-        } else {
-            console.log('Notification permission denied.');
+        if (permission !== 'granted') {
+            console.log('Notification permission denied');
+            return null;
         }
-        return null;
+
+        console.log('Notification permission granted.');
+
+        // Must pass service worker registration for mobile
+        const registration = await navigator.serviceWorker.ready;
+
+        const token = await getToken(messaging, {
+            vapidKey: vapidKey,
+            serviceWorkerRegistration: registration
+        });
+
+        console.log("FCM Token:", token);
+        return token;
     } catch (err) {
         console.error('Error getting FCM token', err);
         return null;
