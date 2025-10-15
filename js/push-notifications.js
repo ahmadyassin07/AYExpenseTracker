@@ -17,26 +17,47 @@ export function initialize(firebaseConfig) {
 }
 
 // Requests permission and returns the FCM token if granted
+//export async function requestPermissionAndGetToken(vapidKey) {
+//    try {
+//        const permission = await Notification.requestPermission();
+//        if (permission === 'granted') {
+//            console.log('Notification permission granted.');
+//            // Get the token
+//            const fcmToken = await getToken(messaging, { vapidKey: vapidKey });
+//            if (fcmToken) {
+//                console.log("FCM Token:", fcmToken);
+//                return fcmToken;
+//            } else {
+//                console.log('No registration token available. Request permission to generate one.');
+//                return null;
+//            }
+//        } else {
+//            console.log('Unable to get permission to notify.');
+//            return null;
+//        }
+//    } catch (err) {
+//        console.error('An error occurred while retrieving token. ', err);
+//        return null;
+//    }
+//}
+
+
 export async function requestPermissionAndGetToken(vapidKey) {
     try {
         const permission = await Notification.requestPermission();
         if (permission === 'granted') {
             console.log('Notification permission granted.');
-            // Get the token
             const fcmToken = await getToken(messaging, { vapidKey: vapidKey });
             if (fcmToken) {
                 console.log("FCM Token:", fcmToken);
                 return fcmToken;
-            } else {
-                console.log('No registration token available. Request permission to generate one.');
-                return null;
             }
         } else {
-            console.log('Unable to get permission to notify.');
-            return null;
+            console.log('Notification permission denied.');
         }
+        return null;
     } catch (err) {
-        console.error('An error occurred while retrieving token. ', err);
+        console.error('Error getting FCM token', err);
         return null;
     }
 }
