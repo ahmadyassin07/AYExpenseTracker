@@ -48,6 +48,62 @@
 
     <script src="js/camera.js"></script>
 
+
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <script>
+        window.ocr = {
+            recognize: async function (base64Image) {
+                try {
+                    // Load image for preprocessing
+                    const img = new Image();
+                    img.src = base64Image;
+                    await new Promise(r => img.onload = r);
+
+                    const canvas = document.createElement("canvas");
+                    const ctx = canvas.getContext("2d");
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    ctx.drawImage(img, 0, 0);
+
+                    // Basic grayscale + threshold filter
+                    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                    const data = imageData.data;
+                    for (let i = 0; i < data.length; i += 4) {
+                        const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
+                        const value = avg > 180 ? 255 : 0; // threshold
+                        data[i] = data[i + 1] = data[i + 2] = value;
+                    }
+                    ctx.putImageData(imageData, 0, 0);
+                    const processedBase64 = canvas.toDataURL();
+
+                    // Perform OCR (Arabic + English)
+                    const { data: { text } } = await Tesseract.recognize(
+                        processedBase64,
+                        'eng+ara',
+                        {
+                            logger: m => console.log(m) // optional progress
+                        }
+                    );
+
+                    return text;
+                } catch (err) {
+                    console.error("OCR failed:", err);
+                    return "";
+                }
+            }
+        };
+    </script>
+
+
+
+
+
+
+
+
+
+
+
     <script src="_framework/blazor.webassembly.js"></script>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -100,26 +156,6 @@
     </script>
 
 
-    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
-    <script>
-        window.ocr = {
-            recognize: async function (base64Image) {
-                try {
-                    const { data: { text } } = await Tesseract.recognize(
-                        base64Image,
-                        'eng',
-                        {
-                            logger: m => console.log(m) // optional logging
-                        }
-                    );
-                    return text;
-                } catch (err) {
-                    console.error(err);
-                    return "";
-                }
-            }
-        };
-    </script>
 
 </body>
 
