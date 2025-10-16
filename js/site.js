@@ -125,12 +125,6 @@ window.exportInsightsPDF = async function () {
 // =========================
 // Optional: Disable right-click
 // =========================
-<<<<<<< HEAD
  //document.addEventListener('contextmenu', function (e) {
  //    e.preventDefault(); // Prevents right-click menu
  //});
-=======
-// document.addEventListener('contextmenu', function (e) {
-//     e.preventDefault(); // Prevents right-click menu
-// });
->>>>>>> c5c1df7e5c943a86c0aa756f415dc3a1f217cb2b
