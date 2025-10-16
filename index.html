@@ -115,7 +115,7 @@
     <script src="_framework/blazor.webassembly.js"></script>
     <script>
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/firebase-messaging-sw.js')
+            navigator.serviceWorker.register('./firebase-messaging-sw.js')
                 .then(reg => console.log('Service Worker registered:', reg.scope))
                 .catch(err => console.error('Service Worker registration failed:', err));
         }
