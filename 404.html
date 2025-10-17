@@ -9,14 +9,11 @@
     <div id="app"></div>
 
     <script>
-        // GitHub Pages SPA fix: redirect 404s to index.html with hash routing
-        var path = window.location.pathname.replace('/AYExpenseTracker/', '');
-        var query = window.location.search || '';
-        var hash = window.location.hash || '';
-
-        // Only redirect if we are not already at index.html
-        if (!window.location.href.includes('index.html')) {
-            window.location.replace('/AYExpenseTracker/index.html#/' + path + query + hash);
+        // Only redirect if URL does not already have a hash
+        if (!window.location.hash) {
+            var path = window.location.pathname.replace('/AYExpenseTracker/', '');
+            // Redirect to hash-based route on the same index.html
+            window.location.replace('/AYExpenseTracker/#/' + path + window.location.search);
         }
     </script>
 </body>
