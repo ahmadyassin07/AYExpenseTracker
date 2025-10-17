@@ -1,7 +1,7 @@
 {
   "name": "AY Expense Tracker",
   "short_name": "ExpenseTracker",
-  "start_url": "/",
+  "start_url": "/AYExpenseTracker/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#0078d7",

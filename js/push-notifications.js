@@ -82,7 +82,7 @@ export async function requestPermissionAndGetToken(vapidKey) {
         console.log("✅ Notification permission granted.");
 
         // Explicitly register the service worker
-        const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+        const registration = await navigator.serviceWorker.register('./firebase-messaging-sw.js');
         console.log("✅ Service worker registered:", registration);
 
         // Get FCM token
