@@ -1,5 +1,4 @@
-﻿<!-- 404.html -->
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
@@ -10,9 +9,15 @@
     <div id="app"></div>
 
     <script>
-        // Redirect all 404s to index.html for SPA routing
+        // GitHub Pages SPA fix: redirect 404s to index.html with hash routing
         var path = window.location.pathname.replace('/AYExpenseTracker/', '');
-        window.location.href = '/AYExpenseTracker/' + path;
+        var query = window.location.search || '';
+        var hash = window.location.hash || '';
+
+        // Only redirect if we are not already at index.html
+        if (!window.location.href.includes('index.html')) {
+            window.location.replace('/AYExpenseTracker/index.html#/' + path + query + hash);
+        }
     </script>
 </body>
 </html>
