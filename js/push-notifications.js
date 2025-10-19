@@ -1,65 +1,94 @@
-﻿//import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+﻿
+
+
+//import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
 //import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-messaging.js";
 
 //let messaging;
 
+///**
+// * Initialize Firebase
+// * @param {Object} firebaseConfig - Your Firebase config object
+// */
 //export function initialize(firebaseConfig) {
 //    const app = initializeApp(firebaseConfig);
 //    messaging = getMessaging(app);
 
 //    // Handle messages when app is in the foreground
 //    onMessage(messaging, (payload) => {
-//        console.log('Foreground message received: ', payload);
-//        alert(`Notification: ${payload.notification.title}\n${payload.notification.body}`);
+//        console.log('Foreground message received:', payload);
+
+//        if (payload.notification) {
+//            alert(`Notification:\n${payload.notification.title}\n${payload.notification.body}`);
+//        }
 //    });
+
+//    console.log("✅ Firebase initialized for messaging.");
 //}
 
+///**
+// * Request permission and get FCM token
+// * Must be called from a user gesture (button click)
+// * @param {string} vapidKey - Your Firebase VAPID key
+// */
 //export async function requestPermissionAndGetToken(vapidKey) {
 //    try {
+//        // Request Notification permission
 //        const permission = await Notification.requestPermission();
 //        if (permission !== 'granted') {
-//            console.log('Notification permission denied');
+//            console.warn("⚠️ Notification permission denied by user.");
 //            return null;
 //        }
+//        console.log("✅ Notification permission granted.");
 
-//        console.log('Notification permission granted.');
+//        // Explicitly register the service worker
+//        const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+//        console.log("✅ Service worker registered:", registration);
 
-//        // Must pass service worker registration for mobile
-//        const registration = await navigator.serviceWorker.ready;
-
+//        // Get FCM token
 //        const token = await getToken(messaging, {
 //            vapidKey: vapidKey,
 //            serviceWorkerRegistration: registration
 //        });
 
-//        console.log("FCM Token:", token);
+//        if (token) {
+//            console.log("✅ FCM Token obtained:", token);
+//        } else {
+//            console.warn("⚠️ No FCM token received.");
+//        }
+
 //        return token;
 //    } catch (err) {
-//        console.error('Error getting FCM token', err);
+//        console.error("❌ Error requesting permission or getting token:", err);
 //        return null;
 //    }
 //}
-
+// wwwroot/js/push-notifications.js
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-messaging.js";
+import {
+    getMessaging,
+    getToken,
+    onMessage,
+    deleteToken
+} from "https://www.gstatic.com/firebasejs/9.6.1/firebase-messaging.js";
 
 let messaging;
 
 /**
- * Initialize Firebase
+ * Initialize Firebase for messaging
  * @param {Object} firebaseConfig - Your Firebase config object
  */
 export function initialize(firebaseConfig) {
     const app = initializeApp(firebaseConfig);
     messaging = getMessaging(app);
 
-    // Handle messages when app is in the foreground
+    // Handle foreground messages
     onMessage(messaging, (payload) => {
-        console.log('Foreground message received:', payload);
+        console.log('💬 Foreground message received:', payload);
 
         if (payload.notification) {
-            alert(`Notification:\n${payload.notification.title}\n${payload.notification.body}`);
+            alert(`🔔 ${payload.notification.title}\n${payload.notification.body}`);
         }
     });
 
@@ -67,37 +96,54 @@ export function initialize(firebaseConfig) {
 }
 
 /**
- * Request permission and get FCM token
- * Must be called from a user gesture (button click)
- * @param {string} vapidKey - Your Firebase VAPID key
+ * Request permission, handle blocked cases, and get a fresh FCM token
+ * @param {string} vapidKey - Your Firebase web push VAPID key
  */
 export async function requestPermissionAndGetToken(vapidKey) {
     try {
-        // Request Notification permission
+        console.log("📨 Checking notification permission...");
+
         const permission = await Notification.requestPermission();
-        if (permission !== 'granted') {
-            console.warn("⚠️ Notification permission denied by user.");
+        console.log("🔔 Permission result:", permission);
+
+        if (permission === 'denied') {
+            alert("❌ Notifications are blocked. To re-enable them:\n1. Click the 🔒 icon near the address bar.\n2. Go to 'Site settings'.\n3. Set Notifications → Allow.");
             return null;
         }
+
+        if (permission !== 'granted') {
+            alert("⚠️ Notifications not granted. Please allow to receive updates.");
+            return null;
+        }
+
         console.log("✅ Notification permission granted.");
 
-        // Explicitly register the service worker
+        // Register service worker every time (ensures correct scope)
         const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
         console.log("✅ Service worker registered:", registration);
 
-        // Get FCM token
+        // Delete old token to force refresh
+        try {
+            await deleteToken(messaging);
+            console.log("🔁 Old FCM token deleted (forcing refresh).");
+        } catch {
+            console.log("ℹ️ No existing token found to delete.");
+        }
+
+        // Get a new FCM token
         const token = await getToken(messaging, {
             vapidKey: vapidKey,
             serviceWorkerRegistration: registration
         });
 
-        if (token) {
-            console.log("✅ FCM Token obtained:", token);
-        } else {
+        if (!token) {
             console.warn("⚠️ No FCM token received.");
+            return null;
         }
 
+        console.log("✅ New FCM token obtained:", token);
         return token;
+
     } catch (err) {
         console.error("❌ Error requesting permission or getting token:", err);
         return null;
