@@ -11,6 +11,8 @@
     <link rel="stylesheet" href="css/app.css" />
     <link rel="icon" type="image/png" href="wallet.png" />
     <link href="AYExpenseTracker.styles.css" rel="stylesheet" />
+    <link rel="manifest" href="/AYExpenseTracker/manifest.json">
+    <meta name="theme-color" content="#0078d7">
 </head>
 
 <body>
@@ -113,11 +115,14 @@
 
 
     <script src="_framework/blazor.webassembly.js"></script>
+    
     <script>
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('./firebase-messaging-sw.js')
+            navigator.serviceWorker.register('/AYExpenseTracker/firebase-messaging-sw.js')
                 .then(reg => console.log('Service Worker registered:', reg.scope))
                 .catch(err => console.error('Service Worker registration failed:', err));
+
+            navigator.serviceWorker.register('/AYExpenseTracker/service-worker.js');
         }
     </script>
     <script type="module" src="js/push-notifications.js"></script>
@@ -172,7 +177,13 @@
         };
     </script>
 
-
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/AYExpenseTracker/service-worker.js')
+                .then(() => console.log('✅ Service Worker registered'))
+                .catch(err => console.error('❌ Service Worker registration failed:', err));
+        }
+    </script>
 
 </body>
 
