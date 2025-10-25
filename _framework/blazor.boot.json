@@ -1,7 +1,7 @@
 {
   "mainAssemblyName": "AYExpenseTracker",
   "resources": {
-    "hash": "sha256-Vdmw1t4QK3Z/MvlBW2uj4ZE/Tlsrb33uANyhFpKM5c0=",
+    "hash": "sha256-B+cC2eUcrERHkTEyFu5gEOOR0yMAepDAzZQDSaIq/FU=",
     "fingerprinting": {
       "Microsoft.AspNetCore.Components.p6hlot6sgx.wasm": "Microsoft.AspNetCore.Components.wasm",
       "Microsoft.AspNetCore.Components.Forms.10rq3ezq5u.wasm": "Microsoft.AspNetCore.Components.Forms.wasm",
@@ -53,12 +53,12 @@
       "System.Runtime.qyc23ghyqb.wasm": "System.Runtime.wasm",
       "System.Text.Encodings.Web.hq94nfnuw2.wasm": "System.Text.Encodings.Web.wasm",
       "System.Text.Json.b48juxcdan.wasm": "System.Text.Json.wasm",
-      "System.Text.RegularExpressions.ms6k3yjlkz.wasm": "System.Text.RegularExpressions.wasm",
+      "System.Text.RegularExpressions.77yqf8yk68.wasm": "System.Text.RegularExpressions.wasm",
       "System.Threading.Thread.c52n2h55a3.wasm": "System.Threading.Thread.wasm",
       "System.Threading.qan3ikffc9.wasm": "System.Threading.wasm",
       "System.8rv0tdtrxz.wasm": "System.wasm",
       "System.Private.CoreLib.hnqczxfhhj.wasm": "System.Private.CoreLib.wasm",
-      "AYExpenseTracker.fdqxs9uswj.wasm": "AYExpenseTracker.wasm",
+      "AYExpenseTracker.o0w2gzk84l.wasm": "AYExpenseTracker.wasm",
       "dotnet.js": "dotnet.js",
       "dotnet.native.l4ptthxatg.js": "dotnet.native.js",
       "dotnet.native.d2w7colv7e.wasm": "dotnet.native.wasm",
@@ -135,11 +135,11 @@
       "System.Runtime.qyc23ghyqb.wasm": "sha256-3p6sBi1fw4/iEv4al4aSkAaMNJtEwCA1z6OdGqCD+YU=",
       "System.Text.Encodings.Web.hq94nfnuw2.wasm": "sha256-SQ1+aS+lCxp43qhvbxWS01rhQfbvNeDSN0xyk2P9/Hc=",
       "System.Text.Json.b48juxcdan.wasm": "sha256-JU6+13pRJUjT5l2yk7YRVBFQKAgUNnzdcQsGXonO1fI=",
-      "System.Text.RegularExpressions.ms6k3yjlkz.wasm": "sha256-ZnouxRvcqxYDTMztFWL7iBRww+kk6VQfzfOH8fxqR/M=",
+      "System.Text.RegularExpressions.77yqf8yk68.wasm": "sha256-XSE0iFdH/ZXjwsEBAi2Te7AajmnozHd4xlG4rbjHv6I=",
       "System.Threading.Thread.c52n2h55a3.wasm": "sha256-YN/uWVtUL3ngJ3BiIQtIbxo1tSEYAPxULTYP9lIZ+Mc=",
       "System.Threading.qan3ikffc9.wasm": "sha256-TpVjybx8amqvr4c8D4r7dIB3NuC1/BtPSbj+OH1vhDQ=",
       "System.8rv0tdtrxz.wasm": "sha256-xMF0eauQ5DkSzUozHLFFMQnL6DSJO09nJLtgag+Dzbw=",
-      "AYExpenseTracker.fdqxs9uswj.wasm": "sha256-Pbw7vJCHWb/+1kyZ4mMDiayntjCC73UjesoiRtuxm+0="
+      "AYExpenseTracker.o0w2gzk84l.wasm": "sha256-mMrXpE5YDEp0YOI8rofg9ialEPP5KrX7JL5IiqRx1dA="
     }
   },
   "cacheBootResources": true,
