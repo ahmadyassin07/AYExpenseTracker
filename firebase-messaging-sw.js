@@ -42,11 +42,12 @@ const firebaseConfig = {
     projectId: "ayexpensetracker",
     storageBucket: "ayexpensetracker.firebasestorage.app",
     messagingSenderId: "730959947369",
-    appId: "1:730959947369:web:cd8e38bcac983702d864f8",
-    vapidKey :"BNirC1hfYrLi-DAApQcpC5LarYQshcFvmP50i-g6qXCHmuVFrdEpnc9f5Bus6eUSMI3eNAG5y_xbRz8w8rN75aI"
+    appId: "1:730959947369:web:cd8e38bcac983702d864f8"
+   
 };
 
 firebase.initializeApp(firebaseConfig);
+const vapidKey = "BNirC1hfYrLi-DAApQcpC5LarYQshcFvmP50i-g6qXCHmuVFrdEpnc9f5Bus6eUSMI3eNAG5y_xbRz8w8rN75aI";
 
 // ✅ Get Firebase Messaging instance
 const messaging = firebase.messaging();
