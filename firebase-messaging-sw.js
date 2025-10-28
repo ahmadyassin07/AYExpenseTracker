@@ -47,6 +47,7 @@ const firebaseConfig = {
 };
 
 firebase.initializeApp(firebaseConfig);
+const vapidKey = "f5b25cd8c9f5fc087b8b697a7602008c65401a47";
 
 
 // ✅ Get Firebase Messaging instance
