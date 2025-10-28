@@ -1,7 +1,17 @@
 ﻿
+// Use importScripts instead of import
+importScripts('https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/9.6.1/firebase-messaging-compat.js');
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-import { getMessaging, onBackgroundMessage } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-messaging.js";
+// ✅ Initialize Firebase
+const firebaseConfig = {
+    apiKey: "AIzaSyBclK8VdNQN8GUFVyADmX_--bWJSFb7-Dk",
+    authDomain: "ayexpensetracker.firebaseapp.com",
+    projectId: "ayexpensetracker",
+    storageBucket: "ayexpensetracker.firebasestorage.app",
+    messagingSenderId: "730959947369",
+    appId: "1:730959947369:web:cd8e38bcac983702d864f8"
+};
 
 // ✅ Initialize Firebase
 const firebaseConfig = {
