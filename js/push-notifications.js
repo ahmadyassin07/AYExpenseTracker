@@ -1,69 +1,54 @@
-﻿import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-import {
-    getMessaging,
-    getToken,
-    onMessage,
-    deleteToken
-} from "https://www.gstatic.com/firebasejs/9.6.1/firebase-messaging.js";
+﻿// Import modular Firebase SDK
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-messaging.js";
 
 let messaging;
 
 /**
- * Initialize Firebase for messaging
- * @param {Object} firebaseConfig - Your Firebase config object
+ * Initialize Firebase App & Messaging
+ * @param {Object} firebaseConfig
  */
-export function initialize(firebaseConfig) {
+export function initializeFirebase(firebaseConfig) {
     const app = initializeApp(firebaseConfig);
     messaging = getMessaging(app);
 
     // Handle foreground messages
     onMessage(messaging, (payload) => {
-        console.log('💬 Foreground message received:', payload);
+        console.log("💬 Foreground message received:", payload);
 
-        if (payload.notification) {
-            alert(`🔔 ${payload.notification.title}\n${payload.notification.body}`);
+        const title = payload.notification?.title || payload.data?.title || "Notification";
+        const body = payload.notification?.body || payload.data?.body || "";
+
+        if (title && body) {
+            alert(`🔔 ${title}\n${body}`);
         }
     });
 
-    console.log("✅ Firebase initialized for messaging.");
+    console.log("✅ Firebase initialized for messaging");
 }
 
 /**
- * Request permission, handle blocked cases, and get a fresh FCM token
- * @param {string} vapidKey - Your Firebase web push VAPID key
+ * Request notification permission & get FCM token
+ * @param {string} vapidKey - Your Web Push VAPID key
  */
 export async function requestPermissionAndGetToken(vapidKey) {
-    try {
-        console.log("📨 Checking notification permission...");
+    if (!messaging) throw new Error("Firebase not initialized. Call initializeFirebase() first.");
 
+    try {
+        console.log("📨 Requesting notification permission...");
         const permission = await Notification.requestPermission();
         console.log("🔔 Permission result:", permission);
 
-        if (permission === 'denied') {
-            alert("❌ Notifications are blocked. To re-enable them:\n1. Click the 🔒 icon near the address bar.\n2. Go to 'Site settings'.\n3. Set Notifications → Allow.");
+        if (permission !== "granted") {
+            alert("⚠️ Notification permission denied. Enable to receive updates.");
             return null;
         }
 
-        if (permission !== 'granted') {
-            alert("⚠️ Notifications not granted. Please allow to receive updates.");
-            return null;
-        }
-
-        console.log("✅ Notification permission granted.");
-
-        // Register service worker every time (ensures correct scope)
-        const registration = await navigator.serviceWorker.register('/AYExpenseTracker/firebase-messaging-sw.js');
+        // Register Service Worker
+        const registration = await navigator.serviceWorker.register("/AYExpenseTracker/firebase-messaging-sw.js");
         console.log("✅ Service worker registered:", registration);
 
-        // Delete old token to force refresh
-        try {
-            await deleteToken(messaging);
-            console.log("🔁 Old FCM token deleted (forcing refresh).");
-        } catch {
-            console.log("ℹ️ No existing token found to delete.");
-        }
-
-        // Get a new FCM token
+        // Get FCM token
         const token = await getToken(messaging, {
             vapidKey: vapidKey,
             serviceWorkerRegistration: registration
@@ -74,11 +59,11 @@ export async function requestPermissionAndGetToken(vapidKey) {
             return null;
         }
 
-        console.log("✅ New FCM token obtained:", token);
+        console.log("✅ FCM token obtained:", token);
         return token;
 
     } catch (err) {
-        console.error("❌ Error requesting permission or getting token:", err);
+        console.error("❌ Error getting FCM token:", err);
         return null;
     }
 }
