@@ -127,4 +127,50 @@ window.exportInsightsPDF = async function () {
 // =========================
  //document.addEventListener('contextmenu', function (e) {
  //    e.preventDefault(); // Prevents right-click menu
- //});
+//});
+
+
+
+
+// =========================
+// Render Bar Chart: Income vs Expenses
+// =========================
+function renderBarChart(id, labels, incomeData, expensesData) {
+    const ctx = document.getElementById(id);
+    if (!ctx) return;
+
+    // Destroy previous chart if exists
+    if (charts[id]) charts[id].destroy();
+
+    charts[id] = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Income',
+                    data: incomeData,
+                    backgroundColor: '#42e695',
+                    borderRadius: 5
+                },
+                {
+                    label: 'Expenses',
+                    data: expensesData,
+                    backgroundColor: '#ff5f6d',
+                    borderRadius: 5
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { position: 'bottom' },
+                tooltip: { mode: 'index', intersect: false }
+            },
+            scales: {
+                x: { stacked: false },
+                y: { beginAtZero: true }
+            }
+        }
+    });
+}

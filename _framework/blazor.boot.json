@@ -1,9 +1,9 @@
 {
   "mainAssemblyName": "AYExpenseTracker",
   "resources": {
-    "hash": "sha256-p8hmiRZjehJmpcKUR7wFSgZaBu5Rinnx/Lmnk7gE4P8=",
+    "hash": "sha256-h5oRiRzF0hg1ILoyMD8xAK2dytAj66vomzbXSVoWw+A=",
     "fingerprinting": {
-      "Microsoft.AspNetCore.Components.p6hlot6sgx.wasm": "Microsoft.AspNetCore.Components.wasm",
+      "Microsoft.AspNetCore.Components.yy32p78aj9.wasm": "Microsoft.AspNetCore.Components.wasm",
       "Microsoft.AspNetCore.Components.Forms.10rq3ezq5u.wasm": "Microsoft.AspNetCore.Components.Forms.wasm",
       "Microsoft.AspNetCore.Components.Web.tmmq8h4dwb.wasm": "Microsoft.AspNetCore.Components.Web.wasm",
       "Microsoft.AspNetCore.Components.WebAssembly.crus4txkse.wasm": "Microsoft.AspNetCore.Components.WebAssembly.wasm",
@@ -21,7 +21,7 @@
       "Microsoft.Win32.SystemEvents.oz7b9w1mqc.wasm": "Microsoft.Win32.SystemEvents.wasm",
       "System.Drawing.Common.n4hldr61tv.wasm": "System.Drawing.Common.wasm",
       "System.Private.Windows.Core.c12mk08bqf.wasm": "System.Private.Windows.Core.wasm",
-      "Microsoft.CSharp.r5r7iqc4wd.wasm": "Microsoft.CSharp.wasm",
+      "Microsoft.CSharp.4jrl9j554z.wasm": "Microsoft.CSharp.wasm",
       "Microsoft.Win32.Primitives.7jsyqagics.wasm": "Microsoft.Win32.Primitives.wasm",
       "System.Collections.Concurrent.iggrecm3pm.wasm": "System.Collections.Concurrent.wasm",
       "System.Collections.Immutable.ox2huy6d3x.wasm": "System.Collections.Immutable.wasm",
@@ -37,8 +37,8 @@
       "System.Drawing.Primitives.mzoonz8hor.wasm": "System.Drawing.Primitives.wasm",
       "System.Drawing.wgem9d1jb2.wasm": "System.Drawing.wasm",
       "System.IO.Pipelines.ncn30wamcg.wasm": "System.IO.Pipelines.wasm",
-      "System.Linq.Expressions.e97rkut28y.wasm": "System.Linq.Expressions.wasm",
-      "System.Linq.yod3zgq53z.wasm": "System.Linq.wasm",
+      "System.Linq.Expressions.44otmoudeq.wasm": "System.Linq.Expressions.wasm",
+      "System.Linq.zlk22ivlmh.wasm": "System.Linq.wasm",
       "System.Memory.nar1vkcejn.wasm": "System.Memory.wasm",
       "System.Net.Http.Json.jr9iptt3iv.wasm": "System.Net.Http.Json.wasm",
       "System.Net.Http.sehqfjyy6c.wasm": "System.Net.Http.wasm",
@@ -57,8 +57,8 @@
       "System.Threading.Thread.c52n2h55a3.wasm": "System.Threading.Thread.wasm",
       "System.Threading.qan3ikffc9.wasm": "System.Threading.wasm",
       "System.8rv0tdtrxz.wasm": "System.wasm",
-      "System.Private.CoreLib.e18oxlgul4.wasm": "System.Private.CoreLib.wasm",
-      "AYExpenseTracker.vx7tggeotf.wasm": "AYExpenseTracker.wasm",
+      "System.Private.CoreLib.9ot6z49qad.wasm": "System.Private.CoreLib.wasm",
+      "AYExpenseTracker.z0jy7ukfsl.wasm": "AYExpenseTracker.wasm",
       "dotnet.js": "dotnet.js",
       "dotnet.native.l4ptthxatg.js": "dotnet.native.js",
       "dotnet.native.d2w7colv7e.wasm": "dotnet.native.wasm",
@@ -83,10 +83,10 @@
     },
     "coreAssembly": {
       "System.Runtime.InteropServices.JavaScript.it9v611w20.wasm": "sha256-dr2zPg+11BQOd27TZPxcs18PqUREGUfAtTD9nRdz7sw=",
-      "System.Private.CoreLib.e18oxlgul4.wasm": "sha256-svOfggXe6IUXT0RKGxva/BueK69/qIyaWV4Vf6riIPU="
+      "System.Private.CoreLib.9ot6z49qad.wasm": "sha256-uX4Y9WDsHEkl6vVP08nQaX7g3xf3xZkuD8XNblKaGog="
     },
     "assembly": {
-      "Microsoft.AspNetCore.Components.p6hlot6sgx.wasm": "sha256-v6lnE1CUmDGyvTNUzTvktFgYUOUaYPlFyfMEFsGJJ9Q=",
+      "Microsoft.AspNetCore.Components.yy32p78aj9.wasm": "sha256-mrUahZngeiNNAIque1IC2dWHcUpWhGYPLeCJeO9J2Tg=",
       "Microsoft.AspNetCore.Components.Forms.10rq3ezq5u.wasm": "sha256-MZZTpP2g9lt3OcfLxg1njwUrYdFpdiftU6DWllfokjI=",
       "Microsoft.AspNetCore.Components.Web.tmmq8h4dwb.wasm": "sha256-FWE2IkMMU/kJGUy/krdWlolNwJ3HKknd28Wj8lghfpI=",
       "Microsoft.AspNetCore.Components.WebAssembly.crus4txkse.wasm": "sha256-uLLR39M3NRApYXN314r1ol5RJboNR2BmvfRJCA9an0o=",
@@ -104,7 +104,7 @@
       "Microsoft.Win32.SystemEvents.oz7b9w1mqc.wasm": "sha256-zEmKiEo5niTKoYk6z84xN+lNCKPxJkOyFlUN0gA2TXA=",
       "System.Drawing.Common.n4hldr61tv.wasm": "sha256-92KtsyjgTyRLHLY1EQ90wSZFq7MUmuK6uTCO5SeyQYw=",
       "System.Private.Windows.Core.c12mk08bqf.wasm": "sha256-0IcLBRv38IZAzOlKdvexZsDolitBdZcrzvpkTL5Fwto=",
-      "Microsoft.CSharp.r5r7iqc4wd.wasm": "sha256-Pz9JrfSiXwRioAapV8a8nYdu6XNJR3VJMkybORN2jVQ=",
+      "Microsoft.CSharp.4jrl9j554z.wasm": "sha256-oOMybFcuul9BqnkveMsnRS2+HjfCRpobuWHegU2sT9s=",
       "Microsoft.Win32.Primitives.7jsyqagics.wasm": "sha256-8wbLiJrH/6M6PRQKHerZsTlnLP28KHWP2Wi4fbm5Mx8=",
       "System.Collections.Concurrent.iggrecm3pm.wasm": "sha256-7tV+PEeBc13bCNOLq7s5zOv1qHdtALkDY3Mw83YEbHo=",
       "System.Collections.Immutable.ox2huy6d3x.wasm": "sha256-5JAeQ0/LvlCoPm1Tgyq9QL202ZW0VZXr2vvA1eWumRw=",
@@ -120,8 +120,8 @@
       "System.Drawing.Primitives.mzoonz8hor.wasm": "sha256-fsh9AYvinAX/hlxsEsSqxwiUSHSMxhf+tEn2+r1KT2c=",
       "System.Drawing.wgem9d1jb2.wasm": "sha256-wL9hReRO6JYKohMUiK0ts3ylL9+ypSji+KSFfJSuofA=",
       "System.IO.Pipelines.ncn30wamcg.wasm": "sha256-9zgTMImSkQhjVIHXHgoExS+8AMh7pMLhtvcFkVL4GGc=",
-      "System.Linq.Expressions.e97rkut28y.wasm": "sha256-gnnkDfLv/TFZAZS3zh9mLyif5tvCU8WRpYGCOKpf/zY=",
-      "System.Linq.yod3zgq53z.wasm": "sha256-7nSkR7US3IGE50Wv9l72HNae/0ppu9leLTxzyvWSPYk=",
+      "System.Linq.Expressions.44otmoudeq.wasm": "sha256-VHX7IN6fGIpITVHTzeEugOoPvfDwZz2Cyolrmib6viI=",
+      "System.Linq.zlk22ivlmh.wasm": "sha256-184skjbc8jc4REnreQdmGF65SOL2E+iJ6/WgI5iFPn0=",
       "System.Memory.nar1vkcejn.wasm": "sha256-kTCEAUeBQFr/P6TmZoWUekSSBz/dIIhFW6qTsUnSnDg=",
       "System.Net.Http.Json.jr9iptt3iv.wasm": "sha256-ESEwn4BSUdjrI3dDCwZPhhN8Fjrmi7UnphUa5PgghcQ=",
       "System.Net.Http.sehqfjyy6c.wasm": "sha256-XOpndPtmIdfeTmtarlb9wt2pGxyQa2C+nDl7eD6bdbw=",
@@ -139,7 +139,7 @@
       "System.Threading.Thread.c52n2h55a3.wasm": "sha256-YN/uWVtUL3ngJ3BiIQtIbxo1tSEYAPxULTYP9lIZ+Mc=",
       "System.Threading.qan3ikffc9.wasm": "sha256-TpVjybx8amqvr4c8D4r7dIB3NuC1/BtPSbj+OH1vhDQ=",
       "System.8rv0tdtrxz.wasm": "sha256-xMF0eauQ5DkSzUozHLFFMQnL6DSJO09nJLtgag+Dzbw=",
-      "AYExpenseTracker.vx7tggeotf.wasm": "sha256-c/0qY4Wct1EcFTxdyppB27i1jnZvKMgyGrSMM2zgZ9E="
+      "AYExpenseTracker.z0jy7ukfsl.wasm": "sha256-0zPeiSNVfFo0vgv/zkA+RdbkKVkGeQyErRCcpsZ5Xak="
     }
   },
   "cacheBootResources": true,
