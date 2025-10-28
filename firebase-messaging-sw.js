@@ -76,7 +76,7 @@ messaging.onBackgroundMessage((payload) => {
 // ✅ (Optional) Handle notification clicks
 self.addEventListener('notificationclick', function (event) {
     event.notification.close();
-    const targetUrl = event.notification?.data?.url || '/AYExpenseTracker/';
+    const targetUrl = event.notification?.data?.url || '/';
     event.waitUntil(
         clients.matchAll({ type: 'window', includeUncontrolled: true }).then(windowClients => {
             // If a window/tab matching the target URL is already open, focus it
