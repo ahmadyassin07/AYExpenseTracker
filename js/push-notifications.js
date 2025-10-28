@@ -33,7 +33,7 @@ export function initialize(firebaseConfig) {
  * @param {string} vapidKey - Your Firebase web push VAPID key
  */
 
-const vapidKey = "f5b25cd8c9f5fc087b8b697a7602008c65401a47";
+
 
 export async function requestPermissionAndGetToken(vapidKey) {
     try {
