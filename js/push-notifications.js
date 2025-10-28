@@ -44,12 +44,12 @@ export async function requestPermissionAndGetToken(vapidKey) {
 
         if (permission === 'denied') {
             alert("❌ Notifications are blocked. To re-enable them:\n1. Click the 🔒 icon near the address bar.\n2. Go to 'Site settings'.\n3. Set Notifications → Allow.");
-            return "";
+            return "null";
         }
 
         if (permission !== 'granted') {
             alert("⚠️ Notifications not granted. Please allow to receive updates.");
-            return "";
+            return "null";
         }
 
         console.log("✅ Notification permission granted.");
@@ -74,7 +74,7 @@ export async function requestPermissionAndGetToken(vapidKey) {
 
         if (!token) {
             console.warn("⚠️ No FCM token received.");
-            return "";
+            return "null";
         }
 
         console.log("✅ New FCM token obtained:", token);
@@ -82,6 +82,6 @@ export async function requestPermissionAndGetToken(vapidKey) {
 
     } catch (err) {
         console.error("❌ Error requesting permission or getting token:", err);
-        return "";
+        return "null";
     }
 }
