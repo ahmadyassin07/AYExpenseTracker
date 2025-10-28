@@ -1,7 +1,7 @@
 {
   "mainAssemblyName": "AYExpenseTracker",
   "resources": {
-    "hash": "sha256-h5oRiRzF0hg1ILoyMD8xAK2dytAj66vomzbXSVoWw+A=",
+    "hash": "sha256-k1AGJPix+BIS+pRExy67W94q2MQu6pKAbOq3WzYlrH4=",
     "fingerprinting": {
       "Microsoft.AspNetCore.Components.yy32p78aj9.wasm": "Microsoft.AspNetCore.Components.wasm",
       "Microsoft.AspNetCore.Components.Forms.10rq3ezq5u.wasm": "Microsoft.AspNetCore.Components.Forms.wasm",
@@ -58,7 +58,7 @@
       "System.Threading.qan3ikffc9.wasm": "System.Threading.wasm",
       "System.8rv0tdtrxz.wasm": "System.wasm",
       "System.Private.CoreLib.9ot6z49qad.wasm": "System.Private.CoreLib.wasm",
-      "AYExpenseTracker.z0jy7ukfsl.wasm": "AYExpenseTracker.wasm",
+      "AYExpenseTracker.p1qqtt7w94.wasm": "AYExpenseTracker.wasm",
       "dotnet.js": "dotnet.js",
       "dotnet.native.l4ptthxatg.js": "dotnet.native.js",
       "dotnet.native.d2w7colv7e.wasm": "dotnet.native.wasm",
@@ -139,7 +139,7 @@
       "System.Threading.Thread.c52n2h55a3.wasm": "sha256-YN/uWVtUL3ngJ3BiIQtIbxo1tSEYAPxULTYP9lIZ+Mc=",
       "System.Threading.qan3ikffc9.wasm": "sha256-TpVjybx8amqvr4c8D4r7dIB3NuC1/BtPSbj+OH1vhDQ=",
       "System.8rv0tdtrxz.wasm": "sha256-xMF0eauQ5DkSzUozHLFFMQnL6DSJO09nJLtgag+Dzbw=",
-      "AYExpenseTracker.z0jy7ukfsl.wasm": "sha256-0zPeiSNVfFo0vgv/zkA+RdbkKVkGeQyErRCcpsZ5Xak="
+      "AYExpenseTracker.p1qqtt7w94.wasm": "sha256-o7j2dafoRILTHgtDsoVxAhMpbXsGx0caI04yNYQ1fSg="
     }
   },
   "cacheBootResources": true,
