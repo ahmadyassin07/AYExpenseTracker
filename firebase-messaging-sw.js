@@ -1,5 +1,4 @@
-﻿
-// Use importScripts instead of import
+﻿// Use importScripts for the v9 compat SDKs
 importScripts('https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/9.6.1/firebase-messaging-compat.js');
 
@@ -13,12 +12,19 @@ const firebaseConfig = {
     appId: "1:730959947369:web:cd8e38bcac983702d864f8"
 };
 
+// ❌ OLD: const app = initializeApp(firebaseConfig);
+// ✅ NEW: Use firebase.initializeApp()
+firebase.initializeApp(firebaseConfig);
 
-const app = initializeApp(firebaseConfig);
-const messaging = getMessaging(app);
+// ❌ OLD: const messaging = getMessaging(app);
+// ✅ NEW: Get the messaging service via the firebase object
+const messaging = firebase.messaging();
+
 
 // ✅ Handle background notifications
-onBackgroundMessage(messaging, (payload) => {
+// ❌ OLD: onBackgroundMessage(messaging, (payload) => {
+// ✅ NEW: Use the method on the messaging object
+messaging.onBackgroundMessage((payload) => {
     console.log('[firebase-messaging-sw.js] Background message received:', payload);
 
     if (!payload.notification) {
