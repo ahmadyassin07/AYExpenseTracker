@@ -113,7 +113,7 @@ export async function requestPermissionAndGetToken(vapidKey) {
         console.log("✅ Notification permission granted.");
 
         // Register service worker properly
-        const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+        const registration = await navigator.serviceWorker.register('/AYExpenseTracker/firebase-messaging-sw.js');
         console.log("✅ Service worker registered:", registration);
 
         // Try to delete old token safely
