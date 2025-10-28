@@ -1,4 +1,4 @@
-﻿/ firebase-messaging-sw.js (Updated to Modular v9+ SDK)
+﻿
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
 import { getMessaging, onBackgroundMessage } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-messaging.js";
