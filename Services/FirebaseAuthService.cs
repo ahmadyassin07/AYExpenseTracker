@@ -1,4 +1,4 @@
-﻿using Microsoft.JSInterop;
+using Microsoft.JSInterop;
 using System.Net.Http.Json;
 using System.Text.Json;
 
@@ -12,7 +12,8 @@ namespace AYExpenseTracker.Services
         public string? UserId { get; private set; }
         public string? Email { get; private set; }
         public string? IdToken { get; private set; }
-        public string RefreshToken { get; set; } = string.Empty; // NEW
+        public string RefreshToken { get; set; } = string.Empty;
+        public DateTime ExpiresAt { get; private set; } = DateTime.MinValue;
         private const string firebaseApiKey = "AIzaSyBclK8VdNQN8GUFVyADmX_--bWJSFb7-Dk";
 
         public FirebaseAuthService(HttpClient http, IJSRuntime js)
@@ -88,7 +89,8 @@ namespace AYExpenseTracker.Services
                 UserId = data.LocalId;
                 Email = email;
                 IdToken = data.IdToken;
-                RefreshToken = data.RefreshToken; // NEW
+                RefreshToken = data.RefreshToken;
+                ExpiresAt = DateTime.UtcNow.AddSeconds(double.Parse(data.ExpiresIn));
                 await SaveToStorage();
 
                 return (true, true);
@@ -183,6 +185,8 @@ namespace AYExpenseTracker.Services
             await _js.InvokeVoidAsync("localStorage.removeItem", "userId");
             await _js.InvokeVoidAsync("localStorage.removeItem", "email");
             await _js.InvokeVoidAsync("localStorage.removeItem", "idToken");
+            await _js.InvokeVoidAsync("localStorage.removeItem", "refreshToken");
+            await _js.InvokeVoidAsync("localStorage.removeItem", "expiresAt");
         }
 
         // ------------------ LOAD FROM LOCAL STORAGE ------------------
@@ -197,7 +201,12 @@ namespace AYExpenseTracker.Services
             UserId = await _js.InvokeAsync<string>("localStorage.getItem", "userId");
             Email = await _js.InvokeAsync<string>("localStorage.getItem", "email");
             IdToken = await _js.InvokeAsync<string>("localStorage.getItem", "idToken");
-            RefreshToken = await _js.InvokeAsync<string>("localStorage.getItem", "refreshToken"); // NEW
+            RefreshToken = await _js.InvokeAsync<string>("localStorage.getItem", "refreshToken");
+            var expiresAtStr = await _js.InvokeAsync<string>("localStorage.getItem", "expiresAt");
+            if (!string.IsNullOrEmpty(expiresAtStr) && DateTime.TryParse(expiresAtStr, out var expiresAt))
+            {
+                ExpiresAt = expiresAt;
+            }
         }
         // ------------------ SAVE TO LOCAL STORAGE ------------------
 
@@ -210,8 +219,9 @@ namespace AYExpenseTracker.Services
                 await _js.InvokeVoidAsync("localStorage.setItem", "userId", UserId);
                 await _js.InvokeVoidAsync("localStorage.setItem", "email", Email);
                 await _js.InvokeVoidAsync("localStorage.setItem", "idToken", IdToken);
+                await _js.InvokeVoidAsync("localStorage.setItem", "expiresAt", ExpiresAt.ToString("o"));
                 if (!string.IsNullOrEmpty(RefreshToken))
-                    await _js.InvokeVoidAsync("localStorage.setItem", "refreshToken", RefreshToken); // NEW
+                    await _js.InvokeVoidAsync("localStorage.setItem", "refreshToken", RefreshToken);
             }
         }
 
@@ -224,32 +234,51 @@ namespace AYExpenseTracker.Services
             try
             {
                 var data = new Dictionary<string, string>
-        {
-            { "grant_type", "refresh_token" },
-            { "refresh_token", RefreshToken }
-        };
+                {
+                    { "grant_type", "refresh_token" },
+                    { "refresh_token", RefreshToken }
+                };
 
                 var response = await _http.PostAsync(
                     $"https://securetoken.googleapis.com/v1/token?key={firebaseApiKey}",
                     new FormUrlEncodedContent(data));
 
-                response.EnsureSuccessStatusCode();
+                if (!response.IsSuccessStatusCode) return false;
 
                 var json = await response.Content.ReadAsStringAsync();
-                var result = JsonSerializer.Deserialize<Dictionary<string, object>>(json);
+                var result = JsonSerializer.Deserialize<JsonElement>(json);
 
-                IdToken = result["id_token"].ToString();
-                RefreshToken = result["refresh_token"].ToString();
-                UserId = result["user_id"].ToString();
+                IdToken = result.GetProperty("id_token").GetString();
+                RefreshToken = result.GetProperty("refresh_token").GetString() ?? RefreshToken;
+                UserId = result.GetProperty("user_id").GetString();
+                var expiresIn = result.GetProperty("expires_in").GetString();
+                
+                if (!string.IsNullOrEmpty(expiresIn))
+                {
+                    ExpiresAt = DateTime.UtcNow.AddSeconds(double.Parse(expiresIn));
+                }
 
                 await SaveToStorage();
-
                 return true;
             }
             catch
             {
                 return false;
             }
+        }
+
+        public async Task<string?> GetValidIdTokenAsync()
+        {
+            if (string.IsNullOrEmpty(IdToken)) return null;
+
+            // If token expires in less than 5 minutes, refresh it
+            if (DateTime.UtcNow.AddMinutes(5) >= ExpiresAt)
+            {
+                bool success = await RefreshIdTokenAsync();
+                if (!success) return null;
+            }
+
+            return IdToken;
         }
 
 
@@ -261,7 +290,8 @@ namespace AYExpenseTracker.Services
         {
             public string IdToken { get; set; } = string.Empty;
             public string LocalId { get; set; } = string.Empty;
-            public string RefreshToken { get; set; } = string.Empty; // NEW
+            public string RefreshToken { get; set; } = string.Empty;
+            public string ExpiresIn { get; set; } = "3600";
         }
 
         private class LookupResponse

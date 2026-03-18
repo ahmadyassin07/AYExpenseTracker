@@ -11,8 +11,24 @@ if (Test-Path "release") { Remove-Item -Recurse -Force "release" }
 dotnet publish AYExpenseTracker.csproj -c Release -o release
 
 # 3. Create docs folder and copy content
-New-Item -ItemType Directory -Path "docs"
-Copy-Item -Path "release/wwwroot/*" -Destination "docs" -Recurse
+New-Item -ItemType Directory -Path "docs" -Force
+$publishPath = "bin/Release/net9.0/browser-wasm/publish/wwwroot/*"
+if (!(Test-Path $publishPath)) {
+    # Fallback to general release path if exists
+    $publishPath = "release/wwwroot/*"
+}
+Copy-Item -Path $publishPath -Destination "docs" -Recurse -Force
+
+# 3b. Ensure index.html and 404.html are at the root
+if (Test-Path "docs/AYExpenseTracker") {
+    Copy-Item -Path "docs/AYExpenseTracker/*" -Destination "docs" -Recurse -Force
+    Remove-Item -Recurse -Force "docs/AYExpenseTracker"
+}
+
+# 4. Success check
+if (!(Test-Path "docs/404.html")) {
+    Copy-Item -Path "docs/index.html" -Destination "docs/404.html"
+}
 
 # 4. Cleanup compressed files (GitHub Pages serves uncompressed)
 Get-ChildItem -Path "docs" -Filter "*.gz" -Recurse | Remove-Item

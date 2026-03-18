@@ -22,10 +22,11 @@ namespace AYExpenseTracker.Services
 
         public async Task<List<Expense>> GetExpensesAsync()
         {
-            if (_auth.UserId == null || _auth.IdToken == null)
+            var idToken = await _auth.GetValidIdTokenAsync();
+            if (_auth.UserId == null || idToken == null)
                 return new List<Expense>();
 
-            var url = $"{_baseUrl}/users/{_auth.UserId}/expenses.json?auth={_auth.IdToken}";
+            var url = $"{_baseUrl}/users/{_auth.UserId}/expenses.json?auth={idToken}";
             var result = await _http.GetFromJsonAsync<Dictionary<string, Expense>>(url);
 
             if (result == null)
@@ -52,10 +53,11 @@ namespace AYExpenseTracker.Services
 
         public async Task AddExpenseAsync(Expense exp)
         {
-            if (_auth.UserId == null || _auth.IdToken == null)
+            var idToken = await _auth.GetValidIdTokenAsync();
+            if (_auth.UserId == null || idToken == null)
                 return;
 
-            var url = $"{_baseUrl}/users/{_auth.UserId}/expenses.json?auth={_auth.IdToken}";
+            var url = $"{_baseUrl}/users/{_auth.UserId}/expenses.json?auth={idToken}";
             var response = await _http.PostAsJsonAsync(url, exp);
 
             if (response.IsSuccessStatusCode)
@@ -68,19 +70,21 @@ namespace AYExpenseTracker.Services
 
         public async Task UpdateExpenseAsync(Expense exp)
         {
-            if (_auth.UserId == null || _auth.IdToken == null || string.IsNullOrEmpty(exp.Id))
+            var idToken = await _auth.GetValidIdTokenAsync();
+            if (_auth.UserId == null || idToken == null || string.IsNullOrEmpty(exp.Id))
                 return;
 
-            var url = $"{_baseUrl}/users/{_auth.UserId}/expenses/{exp.Id}.json?auth={_auth.IdToken}";
+            var url = $"{_baseUrl}/users/{_auth.UserId}/expenses/{exp.Id}.json?auth={idToken}";
             await _http.PutAsJsonAsync(url, exp);
         }
 
         public async Task DeleteExpenseAsync(string id)
         {
-            if (_auth.UserId == null || _auth.IdToken == null || string.IsNullOrEmpty(id))
+            var idToken = await _auth.GetValidIdTokenAsync();
+            if (_auth.UserId == null || idToken == null || string.IsNullOrEmpty(id))
                 return;
 
-            var url = $"{_baseUrl}/users/{_auth.UserId}/expenses/{id}.json?auth={_auth.IdToken}";
+            var url = $"{_baseUrl}/users/{_auth.UserId}/expenses/{id}.json?auth={idToken}";
             await _http.DeleteAsync(url);
         }
 
@@ -90,10 +94,11 @@ namespace AYExpenseTracker.Services
 
         public async Task<List<Category>> GetCategoriesAsync()
         {
-            if (_auth.UserId == null || _auth.IdToken == null)
+            var idToken = await _auth.GetValidIdTokenAsync();
+            if (_auth.UserId == null || idToken == null)
                 return new List<Category>();
 
-            var url = $"{_baseUrl}/users/{_auth.UserId}/categories.json?auth={_auth.IdToken}";
+            var url = $"{_baseUrl}/users/{_auth.UserId}/categories.json?auth={idToken}";
             var result = await _http.GetFromJsonAsync<Dictionary<string, Category>>(url);
 
             if (result == null)
@@ -108,10 +113,11 @@ namespace AYExpenseTracker.Services
 
         public async Task AddCategoryAsync(Category category)
         {
-            if (_auth.UserId == null || _auth.IdToken == null)
+            var idToken = await _auth.GetValidIdTokenAsync();
+            if (_auth.UserId == null || idToken == null)
                 return;
 
-            var url = $"{_baseUrl}/users/{_auth.UserId}/categories.json?auth={_auth.IdToken}";
+            var url = $"{_baseUrl}/users/{_auth.UserId}/categories.json?auth={idToken}";
             var response = await _http.PostAsJsonAsync(url, category);
 
             if (response.IsSuccessStatusCode)
@@ -124,10 +130,11 @@ namespace AYExpenseTracker.Services
 
         public async Task UpdateCategoryAsync(Category category)
         {
-            if (_auth.UserId == null || _auth.IdToken == null || string.IsNullOrEmpty(category.Id))
+            var idToken = await _auth.GetValidIdTokenAsync();
+            if (_auth.UserId == null || idToken == null || string.IsNullOrEmpty(category.Id))
                 return;
 
-            var url = $"{_baseUrl}/users/{_auth.UserId}/categories/{category.Id}.json?auth={_auth.IdToken}";
+            var url = $"{_baseUrl}/users/{_auth.UserId}/categories/{category.Id}.json?auth={idToken}";
             await _http.PutAsJsonAsync(url, category);
 
             var expenses = await GetExpensesAsync();
@@ -159,10 +166,11 @@ namespace AYExpenseTracker.Services
 
         public async Task<List<SavingsGoal>> GetSavingsGoalsAsync()
         {
-            if (_auth.UserId == null || _auth.IdToken == null)
+            var idToken = await _auth.GetValidIdTokenAsync();
+            if (_auth.UserId == null || idToken == null)
                 return new List<SavingsGoal>();
 
-            var url = $"{_baseUrl}/users/{_auth.UserId}/savingsGoals.json?auth={_auth.IdToken}";
+            var url = $"{_baseUrl}/users/{_auth.UserId}/savingsGoals.json?auth={idToken}";
             var result = await _http.GetFromJsonAsync<Dictionary<string, SavingsGoal>>(url);
 
             if (result == null)
@@ -177,10 +185,11 @@ namespace AYExpenseTracker.Services
 
         public async Task AddSavingsGoalAsync(SavingsGoal goal)
         {
-            if (_auth.UserId == null || _auth.IdToken == null)
+            var idToken = await _auth.GetValidIdTokenAsync();
+            if (_auth.UserId == null || idToken == null)
                 return;
 
-            var url = $"{_baseUrl}/users/{_auth.UserId}/savingsGoals.json?auth={_auth.IdToken}";
+            var url = $"{_baseUrl}/users/{_auth.UserId}/savingsGoals.json?auth={idToken}";
             var response = await _http.PostAsJsonAsync(url, goal);
 
             if (response.IsSuccessStatusCode)
@@ -193,19 +202,21 @@ namespace AYExpenseTracker.Services
 
         public async Task UpdateSavingsGoalAsync(SavingsGoal goal)
         {
-            if (_auth.UserId == null || _auth.IdToken == null || string.IsNullOrEmpty(goal.Id))
+            var idToken = await _auth.GetValidIdTokenAsync();
+            if (_auth.UserId == null || idToken == null || string.IsNullOrEmpty(goal.Id))
                 return;
 
-            var url = $"{_baseUrl}/users/{_auth.UserId}/savingsGoals/{goal.Id}.json?auth={_auth.IdToken}";
+            var url = $"{_baseUrl}/users/{_auth.UserId}/savingsGoals/{goal.Id}.json?auth={idToken}";
             await _http.PutAsJsonAsync(url, goal);
         }
 
         public async Task DeleteSavingsGoalAsync(string id)
         {
-            if (_auth.UserId == null || _auth.IdToken == null || string.IsNullOrEmpty(id))
+            var idToken = await _auth.GetValidIdTokenAsync();
+            if (_auth.UserId == null || idToken == null || string.IsNullOrEmpty(id))
                 return;
 
-            var url = $"{_baseUrl}/users/{_auth.UserId}/savingsGoals/{id}.json?auth={_auth.IdToken}";
+            var url = $"{_baseUrl}/users/{_auth.UserId}/savingsGoals/{id}.json?auth={idToken}";
             await _http.DeleteAsync(url);
         }
 
@@ -215,11 +226,12 @@ namespace AYExpenseTracker.Services
 
         public async Task SaveFcmTokenAsync(string token)
         {
-            if (_auth.UserId == null || _auth.IdToken == null || string.IsNullOrEmpty(token))
+            var idToken = await _auth.GetValidIdTokenAsync();
+            if (_auth.UserId == null || idToken == null || string.IsNullOrEmpty(token))
                 return;
 
             // Save to user-specific location
-            var userUrl = $"{_baseUrl}/users/{_auth.UserId}/fcmTokens.json?auth={_auth.IdToken}";
+            var userUrl = $"{_baseUrl}/users/{_auth.UserId}/fcmTokens.json?auth={idToken}";
             await _http.DeleteAsync(userUrl);
 
             var payload = new { token = token, addedAt = DateTime.UtcNow, userId = _auth.UserId };
@@ -231,14 +243,15 @@ namespace AYExpenseTracker.Services
 
         private async Task SaveGlobalFcmTokenAsync(string token)
         {
-            if (_auth.UserId == null || _auth.IdToken == null || string.IsNullOrEmpty(token))
+            var idToken = await _auth.GetValidIdTokenAsync();
+            if (_auth.UserId == null || idToken == null || string.IsNullOrEmpty(token))
                 return;
 
             // We use the token itself as a key (encoded) to avoid duplicates in the global list
             var safeTokenKey = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(token))
                 .Replace("/", "_").Replace("+", "-").Replace("=", "");
             
-            var globalUrl = $"{_baseUrl}/global_tokens/{safeTokenKey}.json?auth={_auth.IdToken}";
+            var globalUrl = $"{_baseUrl}/global_tokens/{safeTokenKey}.json?auth={idToken}";
             
             var payload = new { token = token, userId = _auth.UserId, lastUpdated = DateTime.UtcNow };
             await _http.PutAsJsonAsync(globalUrl, payload);
@@ -246,9 +259,10 @@ namespace AYExpenseTracker.Services
 
         public async Task<List<string>> GetAllGlobalFcmTokensAsync()
         {
-            if (_auth.IdToken == null) return new List<string>();
+            var idToken = await _auth.GetValidIdTokenAsync();
+            if (idToken == null) return new List<string>();
 
-            var url = $"{_baseUrl}/global_tokens.json?auth={_auth.IdToken}";
+            var url = $"{_baseUrl}/global_tokens.json?auth={idToken}";
             var result = await _http.GetFromJsonAsync<Dictionary<string, Dictionary<string, object>>>(url);
 
             if (result == null) return new List<string>();

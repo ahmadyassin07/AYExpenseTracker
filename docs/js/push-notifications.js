@@ -1,4 +1,4 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+﻿import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
 import {
     getMessaging,
     getToken,
@@ -52,8 +52,7 @@ export async function requestPermissionAndGetToken(vapidKey) {
         console.log("✅ Notification permission granted.");
 
         // Register service worker every time (ensures correct scope)
-        // Register the main service worker for messaging
-        const registration = await navigator.serviceWorker.register('service-worker.js');
+        const registration = await navigator.serviceWorker.register('/AYExpenseTracker/firebase-messaging-sw.js');
         console.log("✅ Service worker registered:", registration);
 
         // Delete old token to force refresh
@@ -83,27 +82,3 @@ export async function requestPermissionAndGetToken(vapidKey) {
         return null;
     }
 }
-
-/**
- * Send a notification to multiple tokens via FCM
- * @param {Array} tokens - List of FCM tokens
- * @param {Object} payload - Notification payload (title, body, icon, data)
- */
-window.sendBulkNotifications = async (tokens, payload) => {
-    console.log(`📣 Broadcasting to ${tokens.length} tokens...`);
-    
-    // In a real production app, you would send this to your own C# backend
-    // which would use FirebaseAdmin SDK to send the message.
-    // For this standalone client, we provide a warning that this is a simulated
-    // broadcast as client-side FCM sending is deprecated/restricted.
-    
-    // We will simulate the success for the UI demonstration, but we'll also log
-    // what would be sent.
-    
-    for (const token of tokens) {
-        console.log(`🚀 Sending to token: ${token.substring(0, 10)}...`, payload);
-    }
-
-    // Return true to show success in the Blazor UI
-    return true; 
-};
