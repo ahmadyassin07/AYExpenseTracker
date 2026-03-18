@@ -1,20 +1,190 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AYExpenseTracker</title>
     <base href="/AYExpenseTracker/" />
+    <link rel="stylesheet" href="lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="css/app.css" />
+    <link rel="icon" type="image/png" href="wallet.png" />
+    <link href="AYExpenseTracker.styles.css" rel="stylesheet" />
+    <link rel="manifest" href="/AYExpenseTracker/manifest.json">
+    <meta name="theme-color" content="#0078d7">
 </head>
-<body>
-    <div id="app"></div>
 
+<body>
+    <div id="app">
+
+
+        <!-- Loading Animation -->
+        <div class="loading-container">
+            <svg class="loading-progress">
+                <defs>
+                    <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" stop-color="#00c6ff" />
+                        <stop offset="100%" stop-color="#0072ff" />
+                    </linearGradient>
+                </defs>
+                <circle class="track" r="45%" cx="50%" cy="50%" />
+                <circle class="progress" r="45%" cx="50%" cy="50%" />
+            </svg>
+            <div class="loading-text">Loading<span class="dots">...</span></div>
+        </div>
+
+
+
+
+
+
+    </div>
+
+    <div id="blazor-error-ui">
+        An unhandled error has occurred.
+        <a href="." class="reload">Reload</a>
+        <span class="dismiss">🗙</span>
+    </div>
+
+
+    <script src="js/camera.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <script>
-        // Only redirect if URL does not already have a hash
-        if (!window.location.hash) {
-            var path = window.location.pathname.replace('/AYExpenseTracker/', '');
-            // Redirect to hash-based route on the same index.html
-            window.location.replace('/AYExpenseTracker/#/' + path + window.location.search);
+        window.ocr = {
+            recognize: async function (base64Image) {
+                try {
+                    const img = new Image();
+                    img.src = base64Image;
+                    await new Promise(r => img.onload = r);
+
+                    // Increase resolution for better OCR
+                    const canvas = document.createElement("canvas");
+                    const scale = 2; // 2x for higher DPI
+                    canvas.width = img.width * scale;
+                    canvas.height = img.height * scale;
+                    const ctx = canvas.getContext("2d");
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+                    // Convert to grayscale (no threshold yet)
+                    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                    const data = imageData.data;
+                    for (let i = 0; i < data.length; i += 4) {
+                        const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
+                        data[i] = data[i + 1] = data[i + 2] = avg;
+                    }
+                    ctx.putImageData(imageData, 0, 0);
+
+                    // Optional: crop bottom 25% for total amount (can improve accuracy)
+                    const footerHeight = canvas.height * 0.25;
+                    const footerData = ctx.getImageData(0, canvas.height - footerHeight, canvas.width, footerHeight);
+                    const footerCanvas = document.createElement("canvas");
+                    footerCanvas.width = canvas.width;
+                    footerCanvas.height = footerHeight;
+                    footerCanvas.getContext("2d").putImageData(footerData, 0, 0);
+
+                    const processedBase64 = canvas.toDataURL();
+
+                    // Tesseract OCR with config
+                    const { data: { words } } = await Tesseract.recognize(
+                        processedBase64,
+                        'eng+ara',
+                        {
+                            logger: m => console.log(m),
+                            tessedit_char_whitelist: '0123456789.,',
+                            tessedit_pageseg_mode: Tesseract.PSM.AUTO
+                        }
+                    );
+
+                    return words.map(w => ({
+                        text: w.text,
+                        x: w.bbox.x0,
+                        y: w.bbox.y0,
+                        width: w.bbox.x1 - w.bbox.x0,
+                        height: w.bbox.y1 - w.bbox.y0
+                    }));
+                } catch (err) {
+                    console.error("OCR failed:", err);
+                    return [];
+                }
+            }
+        };
+    </script>
+
+
+
+    <script src="_framework/blazor.webassembly.js"></script>
+    
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/AYExpenseTracker/firebase-messaging-sw.js')
+                .then(reg => console.log('Service Worker registered:', reg.scope))
+                .catch(err => console.error('Service Worker registration failed:', err));
+
+            navigator.serviceWorker.register('/AYExpenseTracker/service-worker.js');
         }
     </script>
+    <script type="module" src="js/push-notifications.js"></script>
+
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="js/site.js"></script>
+
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script>
+        window.downloadExcelFromBlazor = function (filename, json) {
+            const ws = XLSX.utils.json_to_sheet(JSON.parse(json));
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Expenses");
+            XLSX.writeFile(wb, filename);
+        };
+    </script>
+
+
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        window.renderExpensesChart = (ctxId, labels, data) => {
+            const ctx = document.getElementById(ctxId).getContext('2d');
+            if (window.myChart) window.myChart.destroy(); // destroy previous chart if exists
+            window.myChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Expenses',
+                        data: data,
+                        backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { mode: 'index' }
+                    },
+                    scales: {
+                        y: { beginAtZero: true }
+                    }
+                }
+            });
+        };
+    </script>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/AYExpenseTracker/service-worker.js')
+                .then(() => console.log('✅ Service Worker registered'))
+                .catch(err => console.error('❌ Service Worker registration failed:', err));
+        }
+    </script>
+
 </body>
+
 </html>

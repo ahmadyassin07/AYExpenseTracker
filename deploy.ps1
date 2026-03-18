@@ -11,23 +11,31 @@ if (Test-Path "release") { Remove-Item -Recurse -Force "release" }
 dotnet publish AYExpenseTracker.csproj -c Release -o release
 
 # 3. Create docs folder and copy content
-New-Item -ItemType Directory -Path "docs" -Force
+if (Test-Path "docs") {
+    # Keep .git and other essential files if they were there, but clean the rest
+    Get-ChildItem -Path "docs" -Exclude ".git", ".nojekyll" | Remove-Item -Recurse -Force
+} else {
+    New-Item -ItemType Directory -Path "docs" -Force
+}
+
 $publishPath = "bin/Release/net9.0/browser-wasm/publish/wwwroot/*"
 if (!(Test-Path $publishPath)) {
-    # Fallback to general release path if exists
     $publishPath = "release/wwwroot/*"
 }
 Copy-Item -Path $publishPath -Destination "docs" -Recurse -Force
 
-# 3b. Ensure index.html and 404.html are at the root
+# 3b. Ensure .nojekyll exists (Critical for GitHub Pages _framework folder)
+New-Item -ItemType File -Path "docs/.nojekyll" -Force | Out-Null
+
+# 3c. Clean up any accidental nested folder
 if (Test-Path "docs/AYExpenseTracker") {
     Copy-Item -Path "docs/AYExpenseTracker/*" -Destination "docs" -Recurse -Force
     Remove-Item -Recurse -Force "docs/AYExpenseTracker"
 }
 
-# 4. Success check
-if (!(Test-Path "docs/404.html")) {
-    Copy-Item -Path "docs/index.html" -Destination "docs/404.html"
+# 4. Success check & 404 fallback
+if (Test-Path "docs/index.html") {
+    Copy-Item -Path "docs/index.html" -Destination "docs/404.html" -Force
 }
 
 # 4. Cleanup compressed files (GitHub Pages serves uncompressed)
