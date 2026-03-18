@@ -74,3 +74,4 @@ window.triggerPwaUpdate = () => {
         window.location.reload();
     }
 };
+

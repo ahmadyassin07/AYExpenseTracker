@@ -305,9 +305,6 @@
                     
                     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
                     
-                    // CRITICAL: Removed the manual grayscale loop that was freezing the UI.
-                    // Tesseract.js handles grayscale internally and much more efficiently.
-                    
                     const processedBase64 = canvas.toDataURL('image/jpeg', 0.8);
                     
                     console.log("🧠 Running Tesseract extraction...");
@@ -347,6 +344,7 @@
         }
     </script>
 
+
     <script type="module" src="js/push-notifications.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -373,6 +371,7 @@
                 console.error("❌ Excel export failed:", err);
                 alert("Export failed: " + err.message);
             }
+        };
         };
     </script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>

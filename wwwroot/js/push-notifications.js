@@ -107,3 +107,4 @@ window.sendBulkNotifications = async (tokens, payload) => {
     // Return true to show success in the Blazor UI
     return true; 
 };
+
