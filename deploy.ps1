@@ -38,6 +38,12 @@ if (Test-Path "docs/index.html") {
     Copy-Item -Path "docs/index.html" -Destination "docs/404.html" -Force
 }
 
+# 4b. Force the custom service-worker (Avoid Blazor default)
+if (Test-Path "wwwroot/service-worker.js") {
+    Copy-Item -Path "wwwroot/service-worker.js" -Destination "docs/service-worker.js" -Force
+    Write-Host "✅ Custom service-worker.js applied." -ForegroundColor Cyan
+}
+
 # 4. Cleanup compressed files (GitHub Pages serves uncompressed)
 Get-ChildItem -Path "docs" -Filter "*.gz" -Recurse | Remove-Item
 Get-ChildItem -Path "docs" -Filter "*.br" -Recurse | Remove-Item
