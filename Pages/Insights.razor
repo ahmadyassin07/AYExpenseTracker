@@ -1,0 +1,543 @@
+﻿@page "/insights"
+@using AYExpenseTracker.Models
+@using AYExpenseTracker.Services
+@inject FirebaseService Firebase
+@inject FirebaseAuthService Auth
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+<PageTitle>@(isArabic ? "تحليلات المصاريف الذكية" : "Smart Expense Insights | AYExpenseTracker")</PageTitle>
+
+<div dir="@(isArabic ? "rtl" : "ltr")" class="insights-container py-4 text-light">
+
+    <!-- Language Toggle -->
+    <div class="d-flex justify-content-end w-100 p-3">
+        <button class="btn btn-outline-light btn-sm language-toggle" @onclick="ToggleLanguage">
+            @(isArabic ? "English" : "العربية")
+        </button>
+    </div>
+
+    <!-- Date Filters -->
+    <div class="card shadow-lg mb-3 glass-card">
+        <div class="card-body">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-4 col-12">
+                    <label class="form-label fw-bold">@((isArabic ? "من تاريخ" : "From Date"))</label>
+                    <InputDate class="form-control" @bind-Value="fromDate" />
+                </div>
+                <div class="col-md-4 col-12">
+                    <label class="form-label fw-bold">@((isArabic ? "إلى تاريخ" : "To Date"))</label>
+                    <InputDate class="form-control" @bind-Value="toDate" />
+                </div>
+                <div class="col-md-4 col-12 d-flex flex-wrap gap-2">
+                    <button class="btn btn-primary flex-fill flex-sm-auto" @onclick="LoadExpensesDate">
+                        <i class="bi bi-search me-1"></i> @(isArabic ? "بحث" : "Search")
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Header & period selection -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold text-warning">💡 @(isArabic ? "تحليلات ذكية وتوفير" : "Smart Insights & Savings")</h2>
+        <div style="width:220px">
+            <select class="form-select form-select-sm" @bind="SelectedPeriod">
+                <option value="1">@((isArabic ? "هذا الشهر" : "This Month"))</option>
+                <option value="3">@((isArabic ? "آخر 3 أشهر" : "Last 3 Months"))</option>
+                <option value="6">@((isArabic ? "آخر 6 أشهر" : "Last 6 Months"))</option>
+                <option value="12">@((isArabic ? "آخر 12 شهر" : "Last 12 Months"))</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3 col-6">
+            <div class="card glass-card text-center p-3">
+                <h6>@((isArabic ? "إجمالي المصاريف" : "Total Spent"))</h6>
+                <h3 class="text-info fw-bold">@totalSpent.ToString("N2") KWD</h3>
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="card glass-card text-center p-3">
+                <h6>@((isArabic ? "أعلى فئة" : "Top Category"))</h6>
+                <h4 class="text-warning fw-bold">@topCategory</h4>
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="card glass-card text-center p-3">
+                <h6>@((isArabic ? "التوفير المحتمل" : "Potential Savings"))</h6>
+                <h3 class="text-success fw-bold">@potentialSavings.ToString("N2") KWD</h3>
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="card glass-card text-center p-3">
+                <h6>@((isArabic ? "متوسط الإنفاق الشهري" : "Avg Monthly Spend"))</h6>
+                <h3 class="text-primary fw-bold">@avgMonthlySpend.ToString("N2") KWD</h3>
+            </div>
+        </div>
+    </div>
+
+    <!-- Income Input & Forecast -->
+    <div class="card glass-card p-4 mb-4">
+        <h5>💵 @(isArabic ? "الدخل الشهري" : "Monthly Income")</h5>
+        <input type="number" class="form-control mb-2" placeholder="@(isArabic ? "أدخل راتبك بالكويت دينار" : "Enter your salary in KWD")" min="0"
+               @bind-value="monthlyIncome" @bind-value:event="oninput" />
+        @if (monthlyIncome > 0)
+        {
+            <p>
+                @(isArabic ? "يمكنك التوفير المحتمل:" : "Potential Savings:")
+                <b>@Math.Max(monthlyIncome - totalSpent, 0).ToString("N2") KWD</b> @(isArabic ? "هذا الشهر" : "this month")
+            </p>
+            <p class="@((totalSpent > monthlyIncome) ? "text-danger" : "text-success") fw-bold">
+                @(totalSpent > monthlyIncome
+                            ? (isArabic ? "⚠ إنفاقك أعلى من دخلك! قلل المصاريف غير الضرورية." : "⚠ Spending exceeds income! Reduce unnecessary expenses.")
+                            : (isArabic ? "✅ لديك فرصة للتوفير." : "✅ You are on track to save."))
+        </p>
+        <p class="fw-bold text-info">
+            @(isArabic ? $"💡 توقع الشهر القادم: {forecastNextMonth:N2} KWD" : $"💡 Forecast for next month: {forecastNextMonth:N2} KWD")
+        </p>
+                }
+    </div>
+
+    <!-- Charts -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="card glass-card p-3">
+                <h5>@(isArabic ? "توزيع الفئات" : "Category Distribution")</h5>
+                <canvas id="categoryPie"></canvas>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card glass-card p-3">
+                <h5>@(isArabic ? "الإنفاق اليومي" : "Daily Spending")</h5>
+                <canvas id="dailyTrend"></canvas>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card glass-card p-3">
+                <h5>@(isArabic ? "اتجاه الإنفاق الشهري" : "Monthly Spending Trend")</h5>
+                <canvas id="monthlyTrend"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Month-over-Month -->
+    <div class="card glass-card p-3 mb-4">
+        <h5>📊 @(isArabic ? "مقارنة الشهر السابق" : "Month-over-Month")</h5>
+        <p>@(isArabic ? "الشهر السابق:" : "Last month:") <b>@lastMonthTotal.ToString("N2") KWD</b></p>
+        <p>@(isArabic ? "الشهر الحالي:" : "This month:") <b>@currentMonthTotal.ToString("N2") KWD</b></p>
+        <p class="@monthOverMonthClass fw-bold">@monthOverMonthMessage</p>
+    </div>
+
+    <!-- Category Breakdown & Actionable Tips -->
+    <div class="card glass-card p-4 mb-4">
+        <h5>📂 @(isArabic ? "تفاصيل الفئات ونصائح للتوفير" : "Category Breakdown & Tips")</h5>
+        @if (!grouped.Any())
+        {
+            <p class="text-muted">@((isArabic ? "لا توجد فئات للعرض." : "No categories to show."))</p>
+        }
+        else
+        {
+            @foreach (var cat in grouped)
+            {
+                decimal percTotal = totalSpent > 0 ? (decimal)cat.Total / totalSpent * 100 : 0;
+                decimal percIncome = monthlyIncome > 0 ? (decimal)cat.Total / monthlyIncome * 100 : 0;
+                <div class="mb-2">
+                    <span class="fw-bold" @onclick="() => SelectCategory(cat.Key)" style="cursor:pointer;">@cat.Key</span>
+                    <div class="progress mt-1">
+                        <div class="progress-bar @(percIncome > 20 ? "bg-danger" : "bg-warning")" role="progressbar" style="width:@percTotal%">
+                            @percTotal.ToString("N1")%
+                        </div>
+                    </div>
+                    @if (percIncome > 20)
+                    {
+                        <small class="text-warning">
+                            @(isArabic ? $"⚠ تشكل هذه الفئة أكثر من 20% من دخلك، حاول تقليلها." : $"⚠ This category is over 20% of your income. Consider reducing it.")
+                        </small>
+                    }
+                </div>
+            }
+        }
+    </div>
+
+    <!-- What-if Simulation -->
+    <div class="card glass-card p-4 mb-4">
+        <h5>💰 @(isArabic ? "ماذا لو قللت من" : "What if you reduced your") <span class="text-warning">@selectedCategory</span> @(isArabic ? "الإنفاق؟" : "spending?")</h5>
+        <input type="range" min="0" max="50" step="5" @bind="reductionPercent" class="form-range" />
+        <p>@(isArabic ? "خفض بنسبة:" : "Reduce by:") <b>@reductionPercent%</b></p>
+        <p class="text-success fw-bold">
+            @(isArabic ? "يمكنك التوفير:" : "You could save:") @((selectedCategoryTotal * (reductionPercent / 100m)).ToString("N2")) KWD/@(isArabic ? "الشهر" : "month")
+        </p>
+    </div>
+
+    <!-- Smart Insights -->
+    <div class="card glass-card p-4 mb-4">
+        <h5>📈 @(isArabic ? "تحليلات ذكية" : "Smart Insights")</h5>
+        <ul>
+            @foreach (var insight in insights)
+            {
+                <li>@insight</li>
+            }
+        </ul>
+    </div>
+
+    <!-- Export -->
+    <div class="text-end mb-5">
+        <button class="btn btn-warning" @onclick="ExportAsPDF">📝 @(isArabic ? "تصدير التحليلات" : "Export Insights as PDF")</button>
+    </div>
+
+</div>
+
+<style>
+    .insights-container {
+        background: linear-gradient(180deg, #041a2f, #000814);
+        min-height: 100vh;
+    }
+
+    .glass-card {
+        background: rgba(255,255,255,0.08);
+        border: none;
+        backdrop-filter: blur(6px);
+        border-radius: 1rem;
+        color: #fff;
+        transition: all 0.3s ease;
+    }
+
+        .glass-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+        }
+
+    .progress {
+        height: 20px;
+        border-radius: 10px;
+        overflow: hidden;
+    }
+
+    .progress-bar {
+        text-align: center;
+        font-weight: 600;
+        color: #000;
+    }
+
+    .language-toggle {
+        backdrop-filter: blur(4px);
+        background-color: rgba(255,255,255,0.12);
+        border-color: rgba(255,255,255,0.3);
+        color: #fff;
+        font-weight: 600;
+    }
+
+        .language-toggle:hover {
+            transform: scale(1.03);
+        }
+</style>
+
+@code {
+    private DateTime? fromDate = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);//DateTime.Today.AddMonths(-1);
+    private DateTime? toDate = DateTime.Today;
+    private List<Expense> expenses = new();
+    private IEnumerable<dynamic> grouped = new List<dynamic>();
+    private decimal totalSpent = 0m;
+    private decimal avgMonthlySpend = 0m;
+    private decimal potentialSavings = 0m;
+    private decimal lastMonthTotal = 0m;
+    private decimal currentMonthTotal = 0m;
+    private decimal forecastNextMonth = 0m;
+    private string topCategory = "-";
+    private List<string> insights = new();
+    private string selectedCategory = "-";
+    private decimal selectedCategoryTotal = 0m;
+    private int reductionPercent = 10;
+    private decimal monthlyIncome = 0m;
+    private bool isArabic = false;
+    private int _selectedPeriod = 1;
+    private int SelectedPeriod { get => _selectedPeriod; set { _selectedPeriod = value; UpdateInsights(); } }
+    private string monthOverMonthMessage = "";
+    private string monthOverMonthClass = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        var savedLang = await JS.InvokeAsync<string>("localStorage.getItem", "lang");
+        isArabic = savedLang == "ar";
+        await Auth.LoadFromStorageAsync();
+        if (string.IsNullOrEmpty(Auth.UserId)) Nav.NavigateTo("login");
+        expenses = await Firebase.GetExpensesAsync() ?? new List<Expense>();
+        UpdateInsights();
+    }
+
+    private void ToggleLanguage()
+    {
+        isArabic = !isArabic;
+        JS.InvokeVoidAsync("localStorage.setItem", "lang", isArabic ? "ar" : "en");
+        StateHasChanged();
+    }
+
+    private void LoadExpensesDate()
+    {
+        if (!fromDate.HasValue || !toDate.HasValue) return;
+        var filtered = expenses.Where(e => e.Date.Date >= fromDate.Value.Date && e.Date.Date <= toDate.Value.Date).ToList();
+        UpdateInsights(filtered);
+    }
+
+    // private void UpdateInsights(List<Expense>? filtered = null)
+    // {
+    //     var data = filtered ?? expenses;
+    //     if (_selectedPeriod > 0 && filtered == null)
+    //     {
+    //         var since = DateTime.Now.AddMonths(-_selectedPeriod + 1);
+    //         data = data.Where(e => e.Date.Date >= new DateTime(since.Year, since.Month, 1)).ToList();
+    //     }
+
+    //     totalSpent = data.Sum(e => e.Amount);
+    //     grouped = data.GroupBy(e => e.Category)
+    //         .Select(g => new { Key = g.Key, Total = g.Sum(x => x.Amount) })
+    //         .OrderByDescending(g => g.Total).ToList();
+
+    //     topCategory = grouped.FirstOrDefault()?.Key ?? "-";
+    //     selectedCategory = topCategory;
+    //     selectedCategoryTotal = grouped.FirstOrDefault()?.Total ?? 0m;
+
+    //     potentialSavings = grouped.Take(3).Sum(x => (decimal)x.Total * 0.1m);
+
+    //     var monthsCount = data.Select(e => new { e.Date.Year, e.Date.Month }).Distinct().Count();
+    //     avgMonthlySpend = monthsCount > 0 ? totalSpent / monthsCount : 0m;
+
+    //     var thisMonth = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
+    //     var lastMonth = thisMonth.AddMonths(-1);
+    //     lastMonthTotal = data.Where(e => e.Date.Year == lastMonth.Year && e.Date.Month == lastMonth.Month).Sum(e => e.Amount);
+    //     currentMonthTotal = data.Where(e => e.Date.Year == thisMonth.Year && e.Date.Month == thisMonth.Month).Sum(e => e.Amount);
+
+    //     if (currentMonthTotal > lastMonthTotal) { monthOverMonthMessage = isArabic ? "⚠ المصاريف زادت!" : "⚠ Spending increased!"; monthOverMonthClass = "text-danger"; }
+    //     else if (currentMonthTotal < lastMonthTotal) { monthOverMonthMessage = isArabic ? "✅ وفرت هذا الشهر!" : "✅ You saved this month!"; monthOverMonthClass = "text-success"; }
+    //     else { monthOverMonthMessage = isArabic ? "لا تغيير عن الشهر الماضي." : "No change from last month."; monthOverMonthClass = "text-warning"; }
+
+    //     forecastNextMonth = avgMonthlySpend;
+    //     GenerateInsightsAndSuggestions(grouped);
+    //     _ = InvokeAsync(() => RenderCharts(grouped));
+    // }
+
+
+
+    private void UpdateInsights(List<Expense>? filtered = null)
+    {
+        var data = filtered ?? expenses;
+
+        // 🔹 Filter data based on selected period (e.g., last X months)
+        if (_selectedPeriod > 0 && filtered == null)
+        {
+            // 🔹 Calculate the start and end dates based on the selected period
+            var startMonth = DateTime.Now.AddMonths(-_selectedPeriod + 1); // include current month
+            var since = new DateTime(startMonth.Year, startMonth.Month, 1); // first day of that month
+
+            // 🔹 End date: today (or last day of current month if you prefer full month)
+            var end = DateTime.Today;
+
+           
+
+            data = data.Where(e => e.Date.Date >= since && e.Date.Date <= end).ToList();
+        }
+
+        // 🔹 Total spent
+        totalSpent = data.Sum(e => e.Amount);
+
+        // 🔹 Group by category
+        grouped = data.GroupBy(e => e.Category)
+            .Select(g => new { Key = g.Key, Total = g.Sum(x => x.Amount) })
+            .OrderByDescending(g => g.Total)
+            .ToList();
+
+        topCategory = grouped.FirstOrDefault()?.Key ?? "-";
+        selectedCategory = topCategory;
+        selectedCategoryTotal = grouped.FirstOrDefault()?.Total ?? 0m;
+
+        // 🔹 Potential savings (10% of top 3 categories)
+        potentialSavings = grouped.Take(3).Sum(x => (decimal)x.Total * 0.1m);
+
+        // 🔹 Average monthly spend
+        var monthsCount = data
+            .Select(e => new { e.Date.Year, e.Date.Month })
+            .Distinct()
+            .Count();
+
+        avgMonthlySpend = monthsCount > 0 ? totalSpent / monthsCount : 0m;
+
+        // 🔹 Compare current vs last month
+        var thisMonth = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
+        var lastMonth = thisMonth.AddMonths(-1);
+
+        lastMonthTotal = data
+            .Where(e => e.Date.Year == lastMonth.Year && e.Date.Month == lastMonth.Month)
+            .Sum(e => e.Amount);
+
+        currentMonthTotal = data
+            .Where(e => e.Date.Year == thisMonth.Year && e.Date.Month == thisMonth.Month)
+            .Sum(e => e.Amount);
+
+        // 🔹 Insight message
+        if (currentMonthTotal > lastMonthTotal)
+        {
+            monthOverMonthMessage = isArabic ? "⚠ المصاريف زادت!" : "⚠ Spending increased!";
+            monthOverMonthClass = "text-danger";
+        }
+        else if (currentMonthTotal < lastMonthTotal)
+        {
+            monthOverMonthMessage = isArabic ? "✅ وفرت هذا الشهر!" : "✅ You saved this month!";
+            monthOverMonthClass = "text-success";
+        }
+        else
+        {
+            monthOverMonthMessage = isArabic ? "لا تغيير عن الشهر الماضي." : "No change from last month.";
+            monthOverMonthClass = "text-warning";
+        }
+
+        // 🔹 Forecast next month
+        forecastNextMonth = avgMonthlySpend;
+
+        // 🔹 Generate insights and charts
+        GenerateInsightsAndSuggestions(grouped);
+        _ = InvokeAsync(() => RenderCharts(grouped));
+    }
+
+
+
+
+
+
+
+
+
+    private void SelectCategory(string category) => selectedCategory = category;
+
+    private void GenerateInsightsAndSuggestions(IEnumerable<dynamic> grouped)
+    {
+        insights.Clear();
+        if (!grouped.Any()) return;
+        var top = grouped.First();
+        insights.Add(isArabic ? $"أعلى فئة إنفاق لديك هي {top.Key} ({((decimal)top.Total):N2} KWD)." : $"Your highest spending category is {top.Key} ({((decimal)top.Total):N2} KWD).");
+        if (monthlyIncome > 0)
+        {
+            decimal ratio = totalSpent / monthlyIncome * 100;
+            if (ratio > 50) insights.Add(isArabic ? "⚠ إنفاقك أكثر من نصف دخلك!" : "⚠ You are spending more than half of your income!");
+            else if (ratio > 30) insights.Add(isArabic ? "💡 مصاريفك معتدلة، حاول التوفير 10–15% من دخلك." : "💡 Moderate spending, try saving 10–15% of your income.");
+            else insights.Add(isArabic ? "✅ لديك تحكم ممتاز بالمصاريف!" : "✅ Excellent! You have good control over your spending.");
+        }
+
+        foreach (var cat in grouped.Take(3))
+        {
+            decimal percOfIncome = monthlyIncome > 0 ? (decimal)cat.Total / monthlyIncome * 100 : 0;
+            if (percOfIncome > 20)
+                insights.Add(isArabic ? $"💡 {cat.Key} تشكل {percOfIncome:N1}% من دخلك. قللها لتوفير أكثر." : $"💡 {cat.Key} is {percOfIncome:N1}% of your income. Reduce it to save more.");
+        }
+    }
+
+    // private async Task RenderCharts(IEnumerable<dynamic> grouped)
+    // {
+    //     try
+    //     {
+    //         if (!grouped.Any())
+    //         {
+    //             await JS.InvokeVoidAsync("clearChart", "categoryPie");
+    //             await JS.InvokeVoidAsync("clearChart", "monthlyTrend");
+    //             await JS.InvokeVoidAsync("clearChart", "dailyTrend");
+    //             return;
+    //         }
+
+    //         var labels = grouped.Select(g => g.Key).ToArray();
+    //         var data = grouped.Select(g => (decimal)g.Total).ToArray();
+    //         await JS.InvokeVoidAsync("renderPieChart", "categoryPie", labels, data);
+
+    //         // Daily trend for current month
+    //         var firstDay = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
+    //         var lastDay = firstDay.AddMonths(1).AddDays(-1);
+    //         var daily = Enumerable.Range(0, (lastDay - firstDay).Days + 1)
+    //                               .Select(i => new { Day = firstDay.AddDays(i).Day, Total = data.Where(d => true).Sum() }) // Replace with real daily sum
+    //                               .ToList();
+    //         await JS.InvokeVoidAsync("renderLineChart", "dailyTrend", daily.Select(d => d.Day.ToString()), daily.Select(d => d.Total));
+
+    //         // Monthly trend
+    //         var monthly = expenses.GroupBy(e => new { e.Date.Year, e.Date.Month })
+    //                               .Select(g => new { Label = $"{g.Key.Month}/{g.Key.Year}", Total = g.Sum(x => x.Amount) })
+    //                               .OrderBy(g => g.Label)
+    //                               .ToList();
+    //         await JS.InvokeVoidAsync("renderLineChart", "monthlyTrend", monthly.Select(x => x.Label), monthly.Select(x => x.Total));
+    //     }
+    //     catch (Exception ex) { Console.Error.WriteLine($"RenderCharts error: {ex.Message}"); }
+    // }
+
+
+
+
+    private async Task RenderCharts(IEnumerable<dynamic> grouped)
+    {
+        try
+        {
+            if (!grouped.Any())
+            {
+                await JS.InvokeVoidAsync("clearChart", "categoryPie");
+                await JS.InvokeVoidAsync("clearChart", "monthlyTrend");
+                await JS.InvokeVoidAsync("clearChart", "dailyTrend");
+                return;
+            }
+
+            // 🔹 Category pie chart
+            var labels = grouped.Select(g => g.Key).ToArray();
+            var data = grouped.Select(g => (decimal)g.Total).ToArray();
+            await JS.InvokeVoidAsync("renderPieChart", "categoryPie", labels, data);
+
+            // 🔹 Daily trend for current month
+            var firstDay = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
+            var lastDay = firstDay.AddMonths(1).AddDays(-1);
+
+            var daily = expenses
+                .Where(e => e.Date >= firstDay && e.Date <= lastDay)
+                .GroupBy(e => e.Date.Day)
+                .Select(g => new { Day = g.Key, Total = g.Sum(x => x.Amount) })
+                .OrderBy(g => g.Day)
+                .ToList();
+
+            // Fill missing days with zero (for a smooth line chart)
+            var fullDaily = Enumerable.Range(1, (lastDay - firstDay).Days + 1)
+                .Select(day => new
+                {
+                    Day = day,
+                    Total = daily.FirstOrDefault(d => d.Day == day)?.Total ?? 0m
+                })
+                .ToList();
+
+            await JS.InvokeVoidAsync("renderLineChart", "dailyTrend",
+                fullDaily.Select(d => d.Day.ToString()),
+                fullDaily.Select(d => d.Total));
+
+            // 🔹 Monthly trend (all months available)
+            var monthly = expenses
+                .GroupBy(e => new { e.Date.Year, e.Date.Month })
+                .Select(g => new
+                {
+                    Label = $"{g.Key.Month:D2}/{g.Key.Year}",
+                    Total = g.Sum(x => x.Amount)
+                })
+                .OrderBy(g => g.Label)
+                .ToList();
+
+            await JS.InvokeVoidAsync("renderLineChart", "monthlyTrend",
+                monthly.Select(x => x.Label),
+                monthly.Select(x => x.Total));
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"RenderCharts error: {ex.Message}");
+        }
+    }
+
+
+
+
+
+
+
+
+    private async Task ExportAsPDF() => await JS.InvokeVoidAsync("exportInsightsPDF");
+}

@@ -1,0 +1,271 @@
+@page "/admin-notifications"
+@using AYExpenseTracker.Services
+@using System.Text.Json
+@inject FirebaseService Firebase
+@inject FirebaseAuthService Auth
+@inject NavigationManager Nav
+@inject ToastService Toast
+@inject IJSRuntime JS
+
+@if (!isAuthenticated)
+{
+    <div class="admin-login-container">
+        <div class="login-card">
+            <i class="bi bi-shield-lock-fill login-icon"></i>
+            <h2>Admin Verification</h2>
+            <p>Please enter the administrator password to continue.</p>
+            
+            <div class="form-group mt-4">
+                <input type="password" @bind="adminPassword" @onkeyup="HandleKeyUp" placeholder="Enter Password" class="admin-input" />
+            </div>
+            
+            <button class="btn-login mt-2" @onclick="VerifyPassword">
+                <i class="bi bi-unlock-fill"></i> Access Panel
+            </button>
+            
+            @if (showLoginError)
+            {
+                <div class="login-error mt-3">
+                    <i class="bi bi-exclamation-triangle-fill"></i> Invalid password.
+                </div>
+            }
+        </div>
+    </div>
+}
+else
+{
+    <div class="admin-container">
+        <div class="admin-header">
+            <div class="header-content">
+                <i class="bi bi-shield-check-fill admin-icon"></i>
+                <div>
+                    <h1>Admin Command Center</h1>
+                    <p>Logged in as @Auth.Email</p>
+                </div>
+            </div>
+            <div class="stats-badge">
+                <i class="bi bi-people-fill"></i> @subscribedCount Subscribed
+            </div>
+        </div>
+
+        <div class="admin-grid">
+            <!-- Notification Composer -->
+            <div class="admin-card">
+                <div class="card-header-row">
+                    <h3><i class="bi bi-megaphone-fill"></i> Global Broadcast</h3>
+                    <button class="btn-clear" @onclick="ClearForm">Clear</button>
+                </div>
+                <p class="card-desc">Send a message to all users currently using the app.</p>
+
+                <div class="form-group">
+                    <label>Title</label>
+                    <input type="text" @bind="title" placeholder="e.g., New Feature Alert!" class="admin-input" />
+                </div>
+
+                <div class="form-group">
+                    <label>Message</label>
+                    <textarea @bind="message" placeholder="What's the update?" rows="3" class="admin-input"></textarea>
+                </div>
+
+                <div class="admin-actions">
+                    <button class="btn-send @(CanSend ? "" : "disabled")" @onclick="BroadcastMessage" disabled="@(!CanSend || isSending)">
+                        @if (isSending) { <span class="spinner-border spinner-border-sm me-2"></span> }
+                        <i class="bi bi-broadcast"></i> Internal Broadcast
+                    </button>
+                </div>
+            </div>
+
+            <!-- External Push Helper -->
+            <div class="admin-card">
+                <h3><i class="bi bi-send-check-fill"></i> External Push (FCM)</h3>
+                <p class="card-desc">Use these tokens with your C# Batch Script for real Background Push.</p>
+                
+                <div class="token-list-container">
+                    @if (tokens.Count > 0)
+                    {
+                        <pre class="token-preview">@string.Join("\n", tokens)</pre>
+                    }
+                    else
+                    {
+                        <p class="no-tokens">No active tokens found.</p>
+                    }
+                </div>
+
+                <div class="admin-actions mt-3">
+                    <button class="btn-copy" @onclick="CopyTokens" disabled="@(tokens.Count == 0)">
+                        <i class="bi bi-copy"></i> Copy All Tokens for Script
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="admin-info-card mt-4">
+            <h5><i class="bi bi-info-circle-fill"></i> Developer Instruction</h5>
+            <p>
+                <strong>Internal Broadcast:</strong> Users with the app open will see a live toast notification.
+                <br />
+                <strong>External Push:</strong> Use the tokens with your <code>AYExpensePushMSG</code> tool for system-level notifications.
+            </p>
+        </div>
+    </div>
+}
+
+<style>
+    :root {
+        --admin-primary: #6366f1;
+        --admin-accent: #10b981;
+    }
+
+    /* Login Screen */
+    .admin-login-container { height: 70vh; display: flex; align-items: center; justify-content: center; }
+    .login-card { background: #0f172a / 0.8; border: 1px solid rgba(255,255,255,0.1); padding: 3rem; border-radius: 2rem; text-align: center; max-width: 400px; width: 100%; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
+    .login-icon { font-size: 3rem; color: var(--admin-primary); margin-bottom: 1.5rem; display: block; }
+    .login-card h2 { color: white; margin-bottom: 0.5rem; }
+    .login-card p { color: #94a3b8; font-size: 0.9rem; }
+    .btn-login { width: 100%; background: var(--admin-primary); color: white; border: none; padding: 0.8rem; border-radius: 0.75rem; font-weight: 700; cursor: pointer; transition: 0.3s; }
+    .btn-login:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(99,102,241,0.4); }
+    .login-error { color: #ef4444; font-size: 0.85rem; background: rgba(239, 68, 68, 0.1); padding: 0.5rem; border-radius: 0.5rem; }
+
+    /* Admin UI */
+    .admin-container { max-width: 1000px; margin: 2rem auto; padding: 0 1.5rem; animation: fadeIn 0.4s ease-out; }
+    .admin-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2.5rem; gap: 1rem; }
+    .header-content { display: flex; align-items: center; gap: 1.25rem; }
+    .admin-icon { font-size: 2.5rem; color: var(--admin-primary); filter: drop-shadow(0 0 15px rgba(99,102,241,0.4)); }
+    .admin-header h1 { margin: 0; font-size: 1.85rem; font-weight: 900; color: white; letter-spacing: -0.03em; }
+    .admin-header p { margin: 0; color: #94a3b8; font-size: 0.95rem; }
+
+    .stats-badge { background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.2); padding: 0.6rem 1.2rem; border-radius: 999px; color: var(--admin-primary); font-weight: 700; font-size: 0.85rem; }
+
+    .admin-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 1.5rem; }
+    .admin-card { background: rgba(15, 23, 42, 0.5); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.05); border-radius: 1.5rem; padding: 1.75rem; box-shadow: 0 10px 40px rgba(0,0,0,0.3); }
+    
+    .card-header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
+    .admin-card h3 { margin:0; font-size: 1.25rem; font-weight: 700; color: white; display: flex; align-items: center; gap: 0.75rem; }
+    .btn-clear { background: transparent; border: 1px solid rgba(255,255,255,0.1); color: #94a3b8; font-size: 0.75rem; padding: 0.2rem 0.6rem; border-radius: 0.5rem; cursor: pointer; transition: 0.2s; }
+    .btn-clear:hover { background: rgba(255,255,255,0.05); color: white; }
+
+    .card-desc { color: #64748b; font-size: 0.85rem; margin-bottom: 1.5rem; }
+    .form-group { margin-bottom: 1.25rem; }
+    .form-group label { display: block; margin-bottom: 0.5rem; font-size: 0.75rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; }
+    
+    .admin-input { width: 100%; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); border-radius: 0.75rem; padding: 0.75rem 1rem; color: white; font-size: 0.95rem; transition: 0.2s; }
+    .admin-input:focus { outline: none; border-color: var(--admin-primary); box-shadow: 0 0 0 3px rgba(99,102,241,0.2); }
+
+    .token-list-container { background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.05); border-radius: 1rem; padding: 1rem; height: 180px; overflow-y: auto; }
+    .token-preview { font-family: 'Courier New', monospace; font-size: 0.7rem; color: #10b981; margin: 0; white-space: pre-wrap; word-break: break-all; }
+    .no-tokens { color: #475569; font-style: italic; font-size: 0.85rem; text-align: center; padding-top: 3rem; }
+
+    .admin-actions { display: flex; gap: 1rem; }
+    .btn-send { flex: 1; background: linear-gradient(135deg, var(--admin-primary), #818cf8); color: white; border: none; padding: 0.875rem; border-radius: 0.75rem; font-weight: 700; cursor: pointer; transition: 0.3s; box-shadow: 0 4px 15px rgba(99,102,241,0.3); }
+    .btn-send:hover:not(.disabled) { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(99,102,241,0.5); }
+    .btn-send.disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .btn-copy { width: 100%; background: #1e293b; color: white; border: 1px solid rgba(255,255,255,0.1); padding: 0.75rem; border-radius: 0.75rem; font-weight: 600; cursor: pointer; transition: 0.2s; }
+    .btn-copy:hover { background: #334155; }
+
+    .admin-info-card { background: rgba(99,102,241,0.05); border: 1px dashed var(--admin-primary); border-radius: 1rem; padding: 1.25rem; }
+    .admin-info-card h5 { color: var(--admin-primary); margin: 0 0 0.5rem; font-size: 0.95rem; font-weight: 700; }
+    .admin-info-card p { margin: 0; font-size: 0.85rem; color: #94a3b8; line-height: 1.5; }
+
+    @@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+    @@media (max-width: 768px) {
+        .admin-grid { grid-template-columns: 1fr; }
+        .admin-header { flex-direction: column; align-items: flex-start; }
+        .stats-badge { width: 100%; text-align: center; }
+    }
+</style>
+
+@code {
+    private string adminPassword = "";
+    private bool isAuthenticated = false;
+    private bool showLoginError = false;
+
+    private string title = "";
+    private string message = "";
+    private bool isSending = false;
+    private int subscribedCount = 0;
+    private List<string> tokens = new();
+
+    private bool CanSend => !string.IsNullOrWhiteSpace(title) && !string.IsNullOrWhiteSpace(message);
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Secondary Security Layer (Email check)
+        if (Auth.Email?.ToLower() != "ahmadyassin07@gmail.com")
+        {
+            Nav.NavigateTo("home");
+            return;
+        }
+
+        try {
+            tokens = await Firebase.GetAllGlobalFcmTokensAsync();
+            subscribedCount = tokens.Count;
+        } catch { }
+    }
+
+    private void VerifyPassword()
+    {
+        if (adminPassword == "Admin@AY2026")
+        {
+            isAuthenticated = true;
+            showLoginError = false;
+        }
+        else
+        {
+            showLoginError = true;
+        }
+    }
+
+    private void HandleKeyUp(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") VerifyPassword();
+    }
+
+    private void ClearForm()
+    {
+        title = "";
+        message = "";
+    }
+
+    private async Task BroadcastMessage()
+    {
+        if (!CanSend || isSending) return;
+
+        isSending = true;
+        StateHasChanged();
+
+        try
+        {
+            var broadcastId = Guid.NewGuid().ToString();
+            var payload = new {
+                id = broadcastId,
+                title = title,
+                body = message,
+                sentAt = DateTime.UtcNow,
+                icon = "/AYExpenseTracker/wallet.png"
+            };
+
+            await JS.InvokeVoidAsync("localStorage.setItem", "lastBroadcast", JsonSerializer.Serialize(payload));
+            
+            Toast.ShowToast("📢 Broadcast sent successfully!", "success");
+            ClearForm();
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowToast("Broadcast failed: " + ex.Message, "danger");
+        }
+        finally
+        {
+            isSending = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task CopyTokens()
+    {
+        var text = string.Join("\n", tokens);
+        await JS.InvokeVoidAsync("navigator.clipboard.writeText", text);
+        Toast.ShowToast("📋 Tokens copied to clipboard!", "success");
+    }
+}

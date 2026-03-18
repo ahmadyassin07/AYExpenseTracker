@@ -1,0 +1,441 @@
+@page "/reports"
+@using AYExpenseTracker.Models
+@using AYExpenseTracker.Services
+@inject StateService State
+@inject FirebaseAuthService Auth
+@inject NavigationManager Nav
+@inject ToastService ToastService
+@inject IJSRuntime JS
+
+<PageTitle>Reports | AYExpenseTracker</PageTitle>
+
+<div class="page-content" dir="@(isArabic ? "rtl" : "ltr")">
+
+    @if (State.IsLoading)
+    {
+        <div class="loading-overlay">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+
+    <div class="page-header d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4">
+        <div>
+            <h1 class="page-title">📁 @(isArabic ? "مركز التقارير" : "Reports Center")</h1>
+            <p class="page-subtitle">@(isArabic ? "تصدير وتحليل بياناتك المالية" : "Export and analyze your financial data")</p>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="btn btn-outline-light btn-sm" @onclick="ToggleLanguage">
+                <i class="bi bi-translate"></i>
+            </button>
+        </div>
+    </div>
+
+    @* Filters *@
+    <div class="card mb-4 border-0 shadow-sm animate-slide-up">
+        <div class="card-body">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label small fw-bold">@(isArabic ? "من تاريخ" : "From Date")</label>
+                    <InputDate class="form-control" @bind-Value="fromDate" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small fw-bold">@(isArabic ? "إلى تاريخ" : "To Date")</label>
+                    <InputDate class="form-control" @bind-Value="toDate" />
+                </div>
+                <div class="col-md-3 text-center">
+                    <button class="btn btn-primary w-100" @onclick="ApplyFilter">
+                        <i class="bi bi-arrow-clockwise me-2"></i> @(isArabic ? "تحديث" : "Refresh")
+                    </button>
+                </div>
+                <div class="col-md-3">
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-success flex-fill" @onclick="ExportCSV">
+                            <i class="bi bi-file-earmark-spreadsheet me-2"></i> CSV
+                        </button>
+                        <button class="btn btn-danger flex-fill" @onclick="ExportPDF">
+                            <i class="bi bi-file-earmark-pdf me-2"></i> PDF
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* Report Content for Printing *@
+    <div id="report-content" class="report-container premium-paper animate-slide-up">
+        <div class="report-header">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="report-brand">AYExpenseTracker</h2>
+                    <p class="report-type text-uppercase tracking-wider">@(isArabic ? "تقرير مالي رسمي" : "Official Financial Report")</p>
+                </div>
+                <div class="text-end">
+                    <div class="report-period-label">@(isArabic ? "الفترة" : "Period")</div>
+                    <div class="report-period-value">@fromDate.ToString("MMM dd") - @toDate.ToString("MMM dd, yyyy")</div>
+                </div>
+            </div>
+            <div class="report-divider"></div>
+        </div>
+
+        <div class="row g-4 mb-5">
+            <div class="col-md-4">
+                <div class="report-stat-card">
+                    <div class="stat-icon-bg bg-danger-soft">
+                        <i class="bi bi-graph-down text-danger"></i>
+                    </div>
+                    <div>
+                        <div class="stat-meta">@(isArabic ? "إجمالي المصروفات" : "Total Expenses")</div>
+                        <div class="stat-amount text-danger">@totalExpenses.ToString("N2") <span class="currency">KWD</span></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="report-stat-card">
+                    <div class="stat-icon-bg bg-success-soft">
+                        <i class="bi bi-graph-up text-success"></i>
+                    </div>
+                    <div>
+                        <div class="stat-meta">@(isArabic ? "إجمالي الدخل" : "Total Income")</div>
+                        <div class="stat-amount text-success">@totalIncome.ToString("N2") <span class="currency">KWD</span></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="report-stat-card highlight">
+                    <div class="stat-icon-bg bg-primary-soft">
+                        <i class="bi bi-wallet2 text-primary"></i>
+                    </div>
+                    <div>
+                        <div class="stat-meta">@(isArabic ? "صافي الوفورات" : "Net Savings")</div>
+                        <div class="stat-amount @(netSavings >= 0 ? "text-primary" : "text-danger")">@netSavings.ToString("N2") <span class="currency">KWD</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section-header mb-3">
+            <h5 class="fw-bold"><i class="bi bi-list-check me-2"></i>@(isArabic ? "تفاصيل المعاملات" : "Transaction Details")</h5>
+        </div>
+        
+        <div class="table-responsive">
+            <table class="premium-table">
+                <thead>
+                    <tr>
+                        <th>@(isArabic ? "التاريخ" : "Date")</th>
+                        <th>@(isArabic ? "العنوان" : "Title")</th>
+                        <th>@(isArabic ? "الفئة" : "Category")</th>
+                        <th>@(isArabic ? "النوع" : "Type")</th>
+                        <th class="text-end">@(isArabic ? "المبلغ" : "Amount")</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (filteredTransactions.Any())
+                    {
+                        @foreach (var t in filteredTransactions.OrderByDescending(x => x.Date))
+                        {
+                            <tr>
+                                <td class="text-nowrap">@t.Date.ToString("yyyy-MM-dd")</td>
+                                <td class="fw-500">@t.Title</td>
+                                <td><span class="report-category">@t.Category</span></td>
+                                <td>
+                                    <span class="report-type-badge @(t.Type == TransactionType.Income ? "income" : "expense")">
+                                        @t.Type
+                                    </span>
+                                </td>
+                                <td class="text-end fw-bold @(t.Type == TransactionType.Income ? "text-success" : "text-danger")">
+                                    @(t.Type == TransactionType.Income ? "+" : "-")@t.Amount.ToString("N2")
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="5" class="text-center py-5 text-muted">
+                                <i class="bi bi-info-circle me-2"></i>
+                                @(isArabic ? "لا توجد بيانات متاحة للفترة المختارة." : "No data available for the selected period.")
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="4" class="text-end fw-bold">@(isArabic ? "الإجمالي الصافي" : "Net Total")</td>
+                        <td class="text-end fw-bold @(netSavings >= 0 ? "text-success" : "text-danger")">@netSavings.ToString("N2") KWD</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+
+        <div class="report-footer-meta mt-5 pt-4 d-flex justify-content-between align-items-center text-muted small">
+            <div>
+                <i class="bi bi-info-circle me-1"></i> @(isArabic ? "تم إنشاؤه بواسطة تطبيق AYExpenseTracker" : "Generated via AYExpenseTracker App")
+            </div>
+            <div>
+                @DateTime.Now.ToString("F")
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<style>
+    .premium-paper {
+        background: #ffffff !important;
+        color: #1a1a1b !important;
+        padding: 3rem !important;
+        border-radius: 1rem;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        min-height: 800px;
+        position: relative;
+        font-family: 'Inter', sans-serif;
+    }
+
+    .report-brand {
+        color: #0d6efd;
+        font-weight: 800;
+        letter-spacing: -0.5px;
+    }
+
+    .report-type {
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: #6c757d;
+        letter-spacing: 2px;
+    }
+
+    .report-period-label {
+        font-size: 0.7rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        color: #adb5bd;
+    }
+
+    .report-period-value {
+        font-weight: 700;
+        color: #2d3436;
+    }
+
+    .report-divider {
+        height: 2px;
+        background: linear-gradient(to right, #0d6efd, #0dcaf0);
+        margin-top: 1rem;
+        border-radius: 2px;
+    }
+
+    .report-stat-card {
+        background: #f8f9fa;
+        padding: 1.25rem;
+        border-radius: 0.75rem;
+        border: 1px solid #e9ecef;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .report-stat-card.highlight {
+        background: #f0f7ff;
+        border-color: #cfe2ff;
+    }
+
+    .stat-icon-bg {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+    }
+
+    .bg-danger-soft { background: #ffe3e3; }
+    .bg-success-soft { background: #d3f9d8; }
+    .bg-primary-soft { background: #e0f2ff; }
+
+    .stat-meta {
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: #6c757d;
+        text-transform: uppercase;
+    }
+
+    .stat-amount {
+        font-size: 1.5rem;
+        font-weight: 800;
+        line-height: 1;
+    }
+
+    .currency {
+        font-size: 0.8rem;
+        font-weight: 500;
+        color: #adb5bd;
+    }
+
+    .section-header h5 {
+        color: #495057;
+        margin-top: 2rem;
+        border-bottom: 2px solid #f1f3f5;
+        padding-bottom: 0.5rem;
+    }
+
+    .premium-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        margin-top: 1rem;
+    }
+
+    .premium-table th {
+        background: #f8f9fa;
+        color: #495057;
+        font-weight: 700;
+        font-size: 0.85rem;
+        padding: 1rem;
+        border-bottom: 2px solid #dee2e6;
+        text-transform: uppercase;
+    }
+
+    .premium-table td {
+        padding: 1rem;
+        border-bottom: 1px solid #f1f3f5;
+        color: #2d3436 !important;
+        font-size: 0.9rem;
+    }
+
+    .premium-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .premium-table tfoot td {
+        background: #f8f9fa;
+        padding: 1rem;
+        border-top: 2px solid #dee2e6;
+    }
+
+    .report-category {
+        color: #0d6efd;
+        font-weight: 600;
+        background: #e0f2ff;
+        padding: 0.25rem 0.6rem;
+        border-radius: 6px;
+        font-size: 0.8rem;
+    }
+
+    .report-type-badge {
+        font-size: 0.7rem;
+        font-weight: 700;
+        padding: 0.2rem 0.5rem;
+        border-radius: 4px;
+        text-transform: uppercase;
+    }
+
+    .report-type-badge.income {
+        background: #d3f9d8;
+        color: #198754;
+    }
+
+    .report-type-badge.expense {
+        background: #ffe3e3;
+        color: #dc3545;
+    }
+
+    .report-footer-meta {
+        border-top: 1px solid #f1f3f5;
+    }
+
+    #report-content * {
+        color: inherit;
+    }
+
+    #report-content .text-success { color: #198754 !important; }
+    #report-content .text-danger { color: #dc3545 !important; }
+    #report-content .text-primary { color: #0d6efd !important; }
+    #report-content .text-muted { color: #6c757d !important; }
+
+    @@media print {
+        body * { visibility: hidden; }
+        #report-content, #report-content * { visibility: visible; }
+        #report-content { 
+            position: absolute; 
+            left: 0; 
+            top: 0; 
+            width: 100%; 
+            box-shadow: none !important; 
+            padding: 0 !important;
+        }
+    }
+
+    .animate-slide-up { animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1); }
+    @@keyframes slideUp {
+        from { opacity: 0; transform: translateY(30px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+</style>
+
+@code {
+    private bool isArabic = false;
+    private List<Expense> filteredTransactions = new();
+    private DateTime fromDate = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+    private DateTime toDate = DateTime.Today;
+
+    private decimal totalExpenses => filteredTransactions.Where(t => t.Type == TransactionType.Expense).Sum(t => t.Amount);
+    private decimal totalIncome => filteredTransactions.Where(t => t.Type == TransactionType.Income).Sum(t => t.Amount);
+    private decimal netSavings => totalIncome - totalExpenses;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var savedLang = await JS.InvokeAsync<string>("localStorage.getItem", "lang");
+        isArabic = savedLang == "ar";
+
+        await Auth.LoadFromStorageAsync();
+        if (string.IsNullOrEmpty(Auth.UserId)) { Nav.NavigateTo("login"); return; }
+
+        ApplyFilter();
+    }
+
+    private void ToggleLanguage()
+    {
+        isArabic = !isArabic;
+        JS.InvokeVoidAsync("localStorage.setItem", "lang", isArabic ? "ar" : "en");
+    }
+
+    private void ApplyFilter()
+    {
+        filteredTransactions = State.Expenses
+            .Where(t => t.Date.Date >= fromDate.Date && t.Date.Date <= toDate.Date)
+            .OrderByDescending(t => t.Date)
+            .ToList();
+    }
+
+    private async Task ExportCSV()
+    {
+        if (!filteredTransactions.Any())
+        {
+            ToastService.ShowToast("No data to export", "warning");
+            return;
+        }
+
+        var csv = new System.Text.StringBuilder();
+        csv.AppendLine("Date,Title,Category,Type,Amount,Description");
+        foreach (var t in filteredTransactions)
+        {
+            csv.AppendLine($"\"{t.Date:yyyy-MM-dd}\",\"{t.Title}\",\"{t.Category}\",\"{t.Type}\",\"{t.Amount:N2}\",\"{t.Description}\"");
+        }
+
+        await JS.InvokeVoidAsync("downloadCsv", $"Report_{fromDate:yyyyMMdd}_{toDate:yyyyMMdd}.csv", csv.ToString());
+        ToastService.ShowToast("CSV Exported successfully!", "success");
+    }
+
+    private async Task ExportPDF()
+    {
+        if (!filteredTransactions.Any())
+        {
+            ToastService.ShowToast("No data to export", "warning");
+            return;
+        }
+
+        await JS.InvokeVoidAsync("window.print");
+    }
+}

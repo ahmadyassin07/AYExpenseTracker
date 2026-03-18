@@ -1,0 +1,310 @@
+@page "/about"
+@inject IJSRuntime JS
+
+<PageTitle>About | AYExpenseTracker</PageTitle>
+
+<div class="about-page-wrapper" dir="@(isArabic ? "rtl" : "ltr")">
+    
+    @if (isLoading)
+    {
+        <div class="loading-overlay">
+            <div class="spinner-premium"></div>
+            <div class="loading-text mt-3">@((isArabic ? "جاري التحميل" : "Loading"))</div>
+        </div>
+    }
+
+    <!-- Language Toggle -->
+    <div class="nav-actions p-4 position-absolute top-0 end-0">
+        <button class="btn btn-premium-sm" @onclick="ToggleLanguage">
+            <i class="bi bi-translate me-2"></i> @(isArabic ? "English" : "العربية")
+        </button>
+    </div>
+
+    <div class="container py-5 mt-5">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <!-- Profile Section -->
+                <div class="profile-card animate-fade-in mb-5">
+                    <div class="profile-header">
+                        <div class="avatar-wrapper">
+                            <img src="images/ahmad.png" class="profile-avatar" alt="Ahmad Yaseen">
+                            <div class="avatar-ring"></div>
+                        </div>
+                        <div class="profile-info text-center mt-3">
+                            <h2 class="profile-name">Ahmad Yaseen</h2>
+                            <p class="profile-title tracking-widest text-uppercase">@(isArabic ? "مهندس برمجيات وتطبيقات مالية" : "Software & Fintech Engineer")</p>
+                        </div>
+                    </div>
+                    
+                    <div class="profile-body text-center mt-4">
+                        <p class="profile-bio px-md-5">
+                            @(isArabic
+                                ? "💼 متخصص في بناء تطبيقات مالية ذكية، آمنة ومبتكرة تركز على تجربة المستخدم والأداء المتفوق."
+                                : "💼 Specialized in crafting smart, secure, and innovative fintech solutions with a focus on premium UX and high-performance architecture.")
+                        </p>
+                    </div>
+
+                    <div class="profile-footer d-flex justify-content-center gap-3 mt-4">
+                        <a href="https://github.com" target="_blank" class="social-btn github">
+                            <i class="bi bi-github"></i>
+                        </a>
+                        <a href="https://linkedin.com" target="_blank" class="social-btn linkedin">
+                            <i class="bi bi-linkedin"></i>
+                        </a>
+                        <a href="#" class="social-btn portfolio">
+                            <i class="bi bi-globe"></i>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Technical Stack -->
+                <div class="section-title mb-4 animate-slide-up" style="animation-delay: 0.2s;">
+                    <h4 class="fw-bold">@(isArabic ? "مجموعة التقنيات" : "Technical Stack")</h4>
+                    <div class="title-line"></div>
+                </div>
+
+                <div class="row g-3 mb-5 animate-slide-up" style="animation-delay: 0.3s;">
+                    @{
+                        var techStack = new[] {
+                            (Icon: "bi-braces", Name: "C# / .NET", Color: "#512bd4"),
+                            (Icon: "bi-lightning", Name: "Blazor Web", Color: "#512bd4"),
+                            (Icon: "bi-fire", Name: "Firebase", Color: "#ffca28"),
+                            (Icon: "bi-palette", Name: "Premium UI/UX", Color: "#0d6efd"),
+                            (Icon: "bi-cpu", Name: "Fast API", Color: "#10b981"),
+                            (Icon: "bi-phone", Name: "Mobile-First", Color: "#6366f1")
+                        };
+                    }
+                    @foreach (var tech in techStack)
+                    {
+                        <div class="col-6 col-md-4">
+                            <div class="tech-card h-100">
+                                <i class="bi @tech.Icon" style="color:@tech.Color"></i>
+                                <span>@tech.Name</span>
+                            </div>
+                        </div>
+                    }
+                </div>
+
+                <!-- Mission Section -->
+                <div class="glass-card p-4 animate-slide-up" style="animation-delay: 0.4s;">
+                    <h5 class="fw-bold mb-3"><i class="bi bi-shield-check me-2 text-primary"></i>@(isArabic ? "أهداف المشروع" : "Project Goals")</h5>
+                    <p class="text-white-50 small mb-0">
+                        @(isArabic 
+                            ? "تم تصميم AYExpenseTracker لتقديم تجربة مصرفية ذكية تساعد المستخدمين على السيطرة الكاملة على شؤونهم المالية من خلال أدوات تحليلية قوية وواجهة مستخدم عصرية وسريعة."
+                            : "AYExpenseTracker was engineered to provide a smart banking experience that helps users take full control of their finances through powerful analytical tools and a modern, lightning-fast user interface.")
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .about-page-wrapper {
+        min-height: 100vh;
+        background: radial-gradient(circle at top right, #1e293b, #0f172a);
+        color: #f8fafc;
+        position: relative;
+        overflow-x: hidden;
+    }
+
+    .profile-card {
+        background: rgba(30, 41, 59, 0.7);
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 2rem;
+        padding: 3rem;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    }
+
+    .avatar-wrapper {
+        position: relative;
+        width: 160px;
+        height: 160px;
+        margin: 0 auto;
+    }
+
+    .profile-avatar {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: 50%;
+        border: 4px solid rgba(255, 255, 255, 0.1);
+        position: relative;
+        z-index: 2;
+    }
+
+    .avatar-ring {
+        position: absolute;
+        inset: -8px;
+        border-radius: 50%;
+        background: linear-gradient(45deg, #6366f1, #10b981);
+        animation: rotate 4s linear infinite;
+        z-index: 1;
+        opacity: 0.5;
+    }
+
+    @@keyframes rotate {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+
+    .profile-name {
+        font-weight: 800;
+        font-size: 2.5rem;
+        background: linear-gradient(to right, #f8fafc, #94a3b8);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .profile-title {
+        font-size: 0.8rem;
+        font-weight: 700;
+        color: #6366f1;
+        letter-spacing: 0.2em;
+    }
+
+    .profile-bio {
+        color: #94a3b8;
+        font-size: 1.1rem;
+        line-height: 1.7;
+    }
+
+    .social-btn {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: #f8fafc;
+        font-size: 1.25rem;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        text-decoration: none;
+    }
+
+    .social-btn:hover {
+        background: #6366f1;
+        border-color: #6366f1;
+        color: white;
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px -5px rgba(99, 102, 241, 0.5);
+    }
+
+    .section-title h4 {
+        position: relative;
+        display: inline-block;
+    }
+
+    .title-line {
+        height: 4px;
+        width: 40px;
+        background: #6366f1;
+        border-radius: 2px;
+        margin-top: 4px;
+    }
+
+    .tech-card {
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 1rem;
+        padding: 1.25rem;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        transition: all 0.3s ease;
+    }
+
+    .tech-card i {
+        font-size: 1.5rem;
+    }
+
+    .tech-card span {
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+
+    .tech-card:hover {
+        background: rgba(255, 255, 255, 0.08);
+        border-color: rgba(255, 255, 255, 0.1);
+        transform: scale(1.02);
+    }
+
+    .glass-card {
+        background: rgba(255, 255, 255, 0.02);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 1.5rem;
+    }
+
+    .btn-premium-sm {
+        background: rgba(255, 255, 255, 0.05);
+        backdrop-filter: blur(8px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: white;
+        padding: 0.5rem 1.25rem;
+        border-radius: 0.75rem;
+        font-weight: 600;
+        font-size: 0.85rem;
+        transition: all 0.3s ease;
+    }
+
+    .btn-premium-sm:hover {
+        background: rgba(255, 255, 255, 0.15);
+        transform: translateY(-2px);
+    }
+
+    .spinner-premium {
+        width: 40px;
+        height: 40px;
+        border: 3px solid rgba(99, 102, 241, 0.2);
+        border-top-color: #6366f1;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+    }
+
+    @@keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    .animate-fade-in { animation: fadeIn 1s ease-out forwards; }
+    .animate-slide-up { animation: slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; opacity: 0; }
+
+    @@keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
+    @@keyframes slideUp {
+        from { opacity: 0; transform: translateY(30px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    @@media (max-width: 768px) {
+        .profile-card { padding: 2rem; }
+        .profile-name { font-size: 1.75rem; }
+        .profile-avatar { width: 120px; height: 120px; }
+    }
+</style>
+
+@code {
+    private bool isLoading = true;
+    private bool isArabic = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var savedLang = await JS.InvokeAsync<string>("localStorage.getItem", "lang");
+        isArabic = savedLang == "ar";
+
+        await Task.Delay(500); // Premium feel loading
+        isLoading = false;
+    }
+
+    private void ToggleLanguage()
+    {
+        isArabic = !isArabic;
+        JS.InvokeVoidAsync("localStorage.setItem", "lang", isArabic ? "ar" : "en");
+    }
+}

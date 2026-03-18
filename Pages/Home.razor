@@ -1,0 +1,472 @@
+@page "/"
+@page "/home"
+@using AYExpenseTracker.Services
+@inject NavigationManager Nav
+@inject FirebaseAuthService Auth
+@inject IJSRuntime JS
+@inject ToastService ToastService
+
+<PageTitle>Home | AYExpenseTracker</PageTitle>
+
+<div dir="@(isArabic ? "rtl" : "ltr")" class="home-premium-wrapper">
+
+    @if (isLoading)
+    {
+        <div class="loading-overlay">
+            <div class="spinner-premium"></div>
+            <div class="loading-text mt-3">@((isArabic ? "جاري التحميل" : "Loading"))</div>
+        </div>
+    }
+
+    <!-- Language Toggle -->
+    <div class="p-4 position-absolute top-5 end-0 z-100">
+        <button class="btn-premium-sm" @onclick="ToggleLanguage">
+            <i class="bi bi-translate me-2"></i> @(isArabic ? "English" : "العربية")
+        </button>
+    </div>
+
+    <!-- Hero Section -->
+    <section class="hero-premium">
+        <div class="container">
+            <div class="row min-vh-100 align-items-center">
+                <div class="col-lg-7 animate-fade-in">
+                    <div class="badge-premium mb-3">@(isArabic ? "أذكى طريقة لإدارة أموالك" : "The Smartest Way to Manage Money")</div>
+                    <h1 class="hero-title mb-4">
+                        @(isArabic ? "سيطر على" : "Take Control of") <br />
+                        <span class="text-gradient">@(isArabic ? "مستقبلك المالي" : "Your Financial Future")</span>
+                    </h1>
+                    <p class="hero-lead mb-5 px-lg-0 px-3">
+                        @(isArabic
+                            ? "تتبع مصروفاتك، حدد ميزانيتك، وحقق أهدافك الادخارية من خلال منصة واحدة ذكية وآمنة."
+                            : "Track spending, set budgets, and crush your savings goals with one smart, secure platform.")
+                    </p>
+                    <div class="d-flex flex-wrap gap-3 justify-content-lg-start justify-content-center">
+                        <button class="btn-cta-primary" @onclick="GoSignup">
+                            @(isArabic ? "ابدأ مجاناً" : "Get Started Free") <i class="bi bi-arrow-right-short ms-2"></i>
+                        </button>
+                        <button class="btn-cta-secondary" @onclick="GoLogin">
+                            @(isArabic ? "تسجيل الدخول" : "Sign In")
+                        </button>
+                    </div>
+                </div>
+                <div class="col-lg-5 d-none d-lg-block animate-float">
+                    <div class="hero-visual-wrapper">
+                        <div class="hero-circle-bg"></div>
+                        <img src="wallet.png" class="hero-img" alt="AYExpenseTracker" />
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features-section py-5">
+        <div class="container py-5">
+            <div class="text-center mb-5 animate-slide-up">
+                <h2 class="section-title">@(isArabic ? "لماذا تختار AYExpenseTracker؟" : "Why Choose AYExpenseTracker?")</h2>
+                <div class="title-underline mx-auto"></div>
+            </div>
+            <div class="row g-4 mt-4">
+                @{
+                    var features = new[] {
+                        (Icon: "bi-graph-up-arrow", Title: isArabic ? "تحليلات ذكية" : "Smart Analytics", Desc: isArabic ? "احصل على رؤى مفصلة حول أنماط إنفاقك وكيفية تحسينها." : "Get deep insights into your spending patterns and how to optimize them."),
+                        (Icon: "bi-shield-lock", Title: isArabic ? "أمان عالي" : "Bank-Level Security", Desc: isArabic ? "بياناتك مشفرة ومؤمنة بأعلى معايير الحماية العالمية." : "Your data is encrypted and secured with world-class protection standards."),
+                        (Icon: "bi-file-earmark-pdf", Title: isArabic ? "تقارير احترافية" : "Professional Reports", Desc: isArabic ? "صدّر بياناتك إلى CSV أو PDF بضغطة زر واحدة." : "Export your data to CSV or PDF with a single click of a button."),
+                        (Icon: "bi-piggy-bank", Title: isArabic ? "أهداف الادخار" : "Savings Goals", Desc: isArabic ? "حدد أهدافك وراقب تقدمك نحو تحقيق أحلامك المالية." : "Set your goals and watch your progress as you reach your dreams."),
+                        (Icon: "bi-phone", Title: isArabic ? "تصميم للجوال" : "Mobile First", Desc: isArabic ? "تجربة مستخدم مثالية على جميع الأجهزة، وبالأخص هاتفك." : "A perfect user experience on all devices, especially your phone."),
+                        (Icon: "bi-translate", Title: isArabic ? "ثنائي اللغة" : "Bilingual", Desc: isArabic ? "دعم كامل للغتين العربية والإنجليزية لسهولة الاستخدام." : "Full support for both Arabic and English for ease of use.")
+                    };
+                }
+                @foreach (var feature in features)
+                {
+                    <div class="col-md-4 animate-slide-up" style="animation-delay: 0.1s;">
+                        <div class="feature-premium-card">
+                            <div class="feature-icon-wrapper">
+                                <i class="bi @feature.Icon"></i>
+                            </div>
+                            <h4 class="mt-4 mb-3">@feature.Title</h4>
+                            <p class="text-muted small">@feature.Desc</p>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </section>
+
+    <!-- Stat Section (Marketing proof) -->
+    <section class="stats-marketing py-5">
+        <div class="container text-center py-4">
+            <div class="row g-4 justify-content-center">
+                <div class="col-6 col-md-3">
+                    <div class="marketing-stat">
+                        <div class="h2 fw-800 mb-0">10k+</div>
+                        <div class="small text-white-50">@(isArabic ? "مستخدم نشط" : "Active Users")</div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="marketing-stat">
+                        <div class="h2 fw-800 mb-0">1M+</div>
+                        <div class="small text-white-50">@(isArabic ? "معاملة مسجلة" : "Transactions Logged")</div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="marketing-stat">
+                        <div class="h2 fw-800 mb-0">4.9/5</div>
+                        <div class="small text-white-50">@(isArabic ? "تقييم الرضا" : "User Rating")</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="final-cta py-5">
+        <div class="container py-5 text-center">
+            <div class="glass-card p-5 animate-scale-in">
+                <h2 class="fw-800 mb-3">@(isArabic ? "جاهز لبدء رحلتك المالية؟" : "Ready to Start Your Journey?")</h2>
+                <p class="text-white-50 mb-5">@(isArabic ? "انضم إلى آلاف المستخدمين الذين يثقون بنا لإدارة أموالهم." : "Join thousands of users who trust us with their financial management.")</p>
+                <div class="d-flex justify-content-center gap-3">
+                    <button class="btn-cta-primary px-5" @onclick="GoSignup">@(isArabic ? "سجل الآن" : "Register Now")</button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="home-footer py-4 border-top border-secondary">
+        <div class="container text-center text-white-50 small">
+            <div>&copy; @DateTime.Now.Year AYExpenseTracker. @(isArabic ? "جميع الحقوق محفوظة." : "All rights reserved.")</div>
+            <div class="mt-2">@(isArabic ? "صمم بكل حب بواسطة" : "Crafted with ❤️ by") <span class="text-white fw-bold">Ahmad Yaseen</span></div>
+        </div>
+    </footer>
+</div>
+
+<style>
+    .home-premium-wrapper {
+        background: #030712;
+        color: #f8fafc;
+        overflow-x: hidden;
+        font-family: 'Inter', sans-serif;
+    }
+
+    /* Hero */
+    .hero-premium {
+        position: relative;
+        background: radial-gradient(circle at 20% 30%, rgba(99, 102, 241, 0.15), transparent),
+                    radial-gradient(circle at 80% 70%, rgba(16, 185, 129, 0.1), transparent);
+    }
+
+    .hero-title {
+        font-size: clamp(2.5rem, 5vw, 4.5rem);
+        font-weight: 900;
+        line-height: 1.1;
+        letter-spacing: -0.05em;
+    }
+
+    .text-gradient {
+        background: linear-gradient(135deg, #6366f1, #10b981);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .hero-lead {
+        font-size: 1.25rem;
+        color: #94a3b8;
+        max-width: 600px;
+        line-height: 1.6;
+    }
+
+    /* Buttons */
+    .btn-cta-primary {
+        background: linear-gradient(135deg, #6366f1, #4f46e5);
+        color: white;
+        border: none;
+        padding: 1rem 2.5rem;
+        border-radius: 1rem;
+        font-weight: 700;
+        font-size: 1.1rem;
+        box-shadow: 0 10px 25px rgba(99, 102, 241, 0.4);
+        transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .btn-cta-primary:hover {
+        transform: translateY(-5px) scale(1.05);
+        box-shadow: 0 15px 35px rgba(99, 102, 241, 0.6);
+    }
+
+    .btn-cta-secondary {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: white;
+        padding: 1rem 2.5rem;
+        border-radius: 1rem;
+        font-weight: 700;
+        font-size: 1.1rem;
+        transition: all 0.3s ease;
+    }
+
+    .btn-cta-secondary:hover {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    /* Visuals */
+    .hero-visual-wrapper {
+        position: relative;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .hero-img {
+        width: 300px;
+        height: auto;
+        position: relative;
+        z-index: 2;
+        filter: drop-shadow(0 20px 40px rgba(0,0,0,0.5));
+    }
+
+    .hero-circle-bg {
+        position: absolute;
+        width: 450px;
+        height: 450px;
+        background: radial-gradient(circle, rgba(99, 102, 241, 0.2), transparent 70%);
+        border-radius: 50%;
+        z-index: 1;
+    }
+
+    /* Features */
+    .section-title {
+        font-weight: 800;
+        font-size: 2.5rem;
+        letter-spacing: -0.03em;
+    }
+
+    .title-underline {
+        width: 60px;
+        height: 4px;
+        background: #6366f1;
+        border-radius: 2px;
+    }
+
+    .feature-premium-card {
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        padding: 2.5rem;
+        border-radius: 1.5rem;
+        text-align: center;
+        height: 100%;
+        transition: all 0.3s ease;
+    }
+
+    .feature-premium-card:hover {
+        background: rgba(255, 255, 255, 0.05);
+        border-color: #6366f1;
+        transform: translateY(-10px);
+    }
+
+    .feature-icon-wrapper {
+        width: 64px;
+        height: 64px;
+        background: rgba(99, 102, 241, 0.1);
+        border-radius: 1rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.75rem;
+        color: #6366f1;
+        margin: 0 auto;
+    }
+
+    /* Stats */
+    .marketing-stat {
+        padding: 1.5rem;
+    }
+
+    .fw-800 { font-weight: 800; }
+
+    /* Layout Helpers */
+    .z-100 { z-index: 100; }
+
+    .btn-premium-sm {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: #f8fafc;
+        padding: 0.5rem 1rem;
+        border-radius: 0.75rem;
+        font-weight: 600;
+        backdrop-filter: blur(10px);
+        transition: all 0.2s ease;
+    }
+
+    .btn-premium-sm:hover { background: rgba(255, 255, 255, 0.1); }
+
+    .badge-premium {
+        display: inline-block;
+        padding: 0.35rem 1rem;
+        background: rgba(99, 102, 241, 0.1);
+        border: 1px solid rgba(99, 102, 241, 0.2);
+        border-radius: 2rem;
+        color: #a5b4fc;
+        font-size: 0.85rem;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+    }
+
+    /* Animations */
+    .animate-float { animation: float 6s ease-in-out infinite; }
+    @@keyframes float {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-20px); }
+    }
+
+    .animate-fade-in { animation: fadeIn 1.2s ease-out forwards; }
+    .animate-slide-up { animation: slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; opacity: 0; }
+    .animate-scale-in { animation: scaleIn 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+
+    @@keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
+    @@keyframes slideUp {
+        from { opacity: 0; transform: translateY(30px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    @@keyframes scaleIn {
+        from { opacity: 0; transform: scale(0.9); }
+        to { opacity: 1; transform: scale(1); }
+    }
+</style>
+
+
+
+
+
+
+
+
+
+
+
+
+@code {
+    private bool isArabic = false;
+    private bool isLoading = true;
+
+    // protected override async Task OnInitializedAsync()
+    // {
+    //     isLoading = true;
+
+    //     var savedLang = await JS.InvokeAsync<string>("localStorage.getItem", "lang");
+    //     isArabic = savedLang == "ar";
+
+    //     await Auth.LoadFromStorageAsync();
+
+    //     if (string.IsNullOrEmpty(Auth.IdToken))
+    //     {
+    //         await LogoutAndRedirect();
+    //         return;
+    //     }
+
+    //     // Refresh token if expired
+    //     bool refreshed = await Auth.RefreshIdTokenAsync();
+    //     if (!refreshed)
+    //     {
+    //         ToastService.ShowToast(isArabic ? "انتهت صلاحية الجلسة. يرجى تسجيل الدخول مرة أخرى." : "Session expired. Please log in again.", "danger");
+            
+    //         await LogoutAndRedirect();
+    //         return;
+    //     }
+
+   
+    //     if (!string.IsNullOrEmpty(Auth.IdToken))
+    //     {
+    //         Nav.NavigateTo("expenses");
+    //     }
+        
+        
+        
+        
+        
+        
+       
+    // }
+
+  
+    
+    
+    
+    
+    
+    
+    
+    protected override async Task OnInitializedAsync()
+    {
+        isLoading = true;
+        StateHasChanged();
+
+        // Load language preference
+        var savedLang = await JS.InvokeAsync<string>("localStorage.getItem", "lang");
+        isArabic = savedLang == "ar";
+
+        // Load auth from storage
+        await Auth.LoadFromStorageAsync();
+
+        if (!string.IsNullOrEmpty(Auth.IdToken))
+        {
+            // Returning user with valid token → go to expenses
+            bool refreshed = await Auth.RefreshIdTokenAsync();
+            if (refreshed)
+            {
+                Nav.NavigateTo("expenses");
+                return;
+            }
+            else
+            {
+                // Token expired → optionally show toast, clear storage, go to login
+                ToastService.ShowToast(isArabic ? "انتهت صلاحية الجلسة. يرجى تسجيل الدخول مرة أخرى." : "Session expired. Please log in again.", "danger");
+                await JS.InvokeVoidAsync("localStorage.clear");
+                await JS.InvokeVoidAsync("sessionStorage.clear");
+                Nav.NavigateTo("login");
+                return;
+            }
+        }
+
+        // New user → stay on Home page
+        isLoading = false;
+        StateHasChanged();
+    }
+    
+    
+    
+    
+    
+    
+    
+    private async Task LogoutAndRedirect()
+    {
+        await JS.InvokeVoidAsync("localStorage.clear");
+        await JS.InvokeVoidAsync("sessionStorage.clear");
+
+        isLoading = false;
+        StateHasChanged();
+
+        await Task.Delay(200);
+        Nav.NavigateTo("login");
+    }
+
+
+    private void ToggleLanguage()
+    {
+        isArabic = !isArabic;
+        JS.InvokeVoidAsync("localStorage.setItem", "lang", isArabic ? "ar" : "en");
+        StateHasChanged();
+    }
+
+    private void GoLogin() => Nav.NavigateTo("login");
+    private void GoSignup() => Nav.NavigateTo("signup");
+}

@@ -1,0 +1,398 @@
+@page "/login"
+@using AYExpenseTracker.Models
+@using AYExpenseTracker.Services
+@inject FirebaseAuthService Auth
+@inject NavigationManager Nav
+@inject ToastService ToastService
+@inject IJSRuntime JS
+
+<PageTitle>Login | AYExpenseTracker</PageTitle>
+
+<div dir="@(isArabic ? "rtl" : "ltr")" class="auth-premium-wrapper">
+    @if (isLoading)
+    {
+        <div class="loading-overlay">
+            <div class="spinner-premium"></div>
+            <div class="loading-text mt-3">@((isArabic ? "جاري التحميل" : "Loading"))</div>
+        </div>
+    }
+    <!-- Language Toggle -->
+    <div class="p-4 position-absolute top-0 end-0 z-100">
+        <button class="btn-premium-sm" @onclick="ToggleLanguage">
+            <i class="bi bi-translate me-2"></i> @(isArabic ? "English" : "العربية")
+        </button>
+    </div>
+
+    <div class="container min-vh-100 d-flex align-items-center justify-content-center py-5">
+        <div class="auth-card-container animate-scale-in">
+            <div class="glass-card auth-card p-4 p-md-5">
+                <div class="text-center mb-4">
+                    <div class="auth-icon-wrapper mb-3 mx-auto animate-float">
+                        <i class="bi bi-shield-lock-fill"></i>
+                    </div>
+                    <h2 class="auth-title mb-2">@(isArabic ? "تسجيل الدخول" : "Welcome Back")</h2>
+                    <p class="auth-subtitle">@(isArabic ? "سجل الدخول لإدارة أموالك بذكاء" : "Sign in to manage your finances smarter")</p>
+                </div>
+
+        @if (!string.IsNullOrEmpty(message))
+        {
+            <div class="alert alert-danger py-2 text-center">@message</div>
+        }
+
+                <EditForm Model="@credentials" OnValidSubmit="LoginUser">
+                    <DataAnnotationsValidator />
+
+                    <div class="form-group-premium mb-4">
+                        <label class="form-label-premium">@(isArabic ? "البريد الإلكتروني" : "Email Address")</label>
+                        <div class="input-premium-wrapper">
+                            <i class="bi bi-envelope"></i>
+                            <InputText class="input-premium" @bind-Value="credentials.Email" 
+                                       placeholder="name@example.com" />
+                        </div>
+                        <ValidationMessage For="@(() => credentials.Email)" class="validation-error-premium" />
+                    </div>
+                    <div class="form-group-premium mb-4">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <label class="form-label-premium mb-0">@(isArabic ? "كلمة المرور" : "Password")</label>
+                            <button type="button" class="btn-link-premium p-0" @onclick="() => showForgotPassword = true">
+                                @(isArabic ? "نسيت كلمة المرور؟" : "Forgot Password?")
+                            </button>
+                        </div>
+                        <div class="input-premium-wrapper">
+                            <i class="bi bi-lock"></i>
+                            <InputText type="@(showPassword ? "text" : "password")" class="input-premium" 
+                                       @bind-Value="credentials.Password" 
+                                       placeholder="••••••••" />
+                            <button type="button" class="password-toggle-premium" @onclick="ToggleShowPassword">
+                                <i class="bi @(showPassword ? "bi-eye-slash" : "bi-eye")"></i>
+                            </button>
+                        </div>
+                        <ValidationMessage For="@(() => credentials.Password)" class="validation-error-premium" />
+                    </div>
+
+
+
+
+
+
+
+
+
+
+
+                    <div class="d-flex align-items-center justify-content-between mb-4">
+                        <label class="checkbox-premium">
+                            <InputCheckbox @bind-Value="rememberMe" />
+                            <span class="checkmark"></span>
+                            <span class="label-text">@(isArabic ? "تذكرني" : "Remember me")</span>
+                        </label>
+                    </div>
+
+                    <button type="submit" class="btn-auth-primary w-100 mb-4">
+                        <span>@(isArabic ? "تسجيل الدخول" : "Sign In")</span>
+                        <i class="bi bi-arrow-right-short ms-2"></i>
+                    </button>
+
+                    <div class="text-center">
+                        <p class="auth-footer-text">
+                            @(isArabic ? "ليس لديك حساب؟" : "Don't have an account?")
+                            <a href="signup" class="auth-link fw-bold">@(isArabic ? "أنشئ حساباً جديداً" : "Create an account")</a>
+                        </p>
+                    </div>
+                </EditForm>
+            </div>
+            
+            <div class="auth-brand-footer text-center mt-4">
+                <div class="text-white-50 small">&copy; @DateTime.Now.Year AYExpenseTracker</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (showForgotPassword)
+{
+    <div class="modal fade show d-block" style="background-color: rgba(3, 7, 18, 0.8); backdrop-filter: blur(8px);">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content glass-card border-0">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title h4">
+                        @(isArabic ? "إعادة تعيين كلمة المرور" : "Reset Password")
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="CloseForgotPassword"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <p class="text-white-50 mb-4">@(isArabic ? "أدخل بريدك الإلكتروني وسنرسل لك رابطاً لإعادة تعيين كلمة مرورك." : "Enter your email and we'll send you a link to reset your password.")</p>
+                    <EditForm Model="@resetModel" OnValidSubmit="SendResetEmail">
+                        <DataAnnotationsValidator />
+                        
+                        <div class="form-group-premium mb-4">
+                            <label class="form-label-premium">@(isArabic ? "البريد الإلكتروني" : "Email Address")</label>
+                            <div class="input-premium-wrapper">
+                                <i class="bi bi-envelope"></i>
+                                <InputText class="input-premium" @bind-Value="resetModel.Email"
+                                           placeholder="name@example.com" />
+                            </div>
+                            <ValidationMessage For="@(() => resetModel.Email)" class="validation-error-premium" />
+                        </div>
+
+                        <button type="submit" class="btn-auth-primary w-100">
+                            @(isArabic ? "إرسال رابط إعادة التعيين" : "Send Reset Email")
+                        </button>
+                    </EditForm>
+
+                    @if (!string.IsNullOrEmpty(resetMessage))
+                    {
+                        <div class="alert-premium-danger mt-4">@resetMessage</div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<style>
+    .auth-premium-wrapper {
+        min-height: 100vh;
+        background: #030712;
+        background: radial-gradient(circle at top right, rgba(99, 102, 241, 0.15), transparent),
+                    radial-gradient(circle at bottom left, rgba(16, 185, 129, 0.1), transparent);
+        color: #f8fafc;
+        font-family: 'Inter', sans-serif;
+        position: relative;
+        overflow-x: hidden;
+    }
+
+    .auth-card-container {
+        width: 100%;
+        max-width: 480px;
+    }
+
+    .auth-card {
+        border-radius: 2rem !important;
+        background: rgba(17, 24, 39, 0.7) !important;
+        border: 1px solid rgba(255, 255, 255, 0.08) !important;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5) !important;
+    }
+
+    .auth-icon-wrapper {
+        width: 64px;
+        height: 64px;
+        background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(16, 185, 129, 0.2));
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 1.25rem;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.75rem; color: #6366f1;
+    }
+
+    .auth-title {
+        font-weight: 800; letter-spacing: -0.04em;
+        background: linear-gradient(135deg, #fff 0%, #94a3b8 100%);
+        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+
+    .auth-subtitle { color: #94a3b8; font-size: 0.95rem; }
+
+    .form-group-premium { position: relative; }
+    .form-label-premium { font-size: 0.85rem; font-weight: 600; color: #cbd5e1; margin-bottom: 0.5rem; display: block; }
+    .input-premium-wrapper { position: relative; display: flex; align-items: center; }
+    .input-premium-wrapper i:not(.bi-eye):not(.bi-eye-slash) { position: absolute; left: 1.25rem; color: #64748b; font-size: 1.1rem; }
+    [dir="rtl"] .input-premium-wrapper i:not(.bi-eye):not(.bi-eye-slash) { left: auto; right: 1.25rem; }
+
+    .input-premium {
+        width: 100%; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 1rem; padding: 0.875rem 1.25rem 0.875rem 3.25rem; color: white; font-size: 0.95rem; transition: all 0.2s ease;
+    }
+    [dir="rtl"] .input-premium { padding: 0.875rem 3.25rem 0.875rem 1.25rem; }
+    .input-premium:focus { background: rgba(255, 255, 255, 0.05); border-color: #6366f1; outline: none; box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15); }
+
+    .password-toggle-premium { position: absolute; right: 1.25rem; background: transparent; border: none; color: #64748b; padding: 0; cursor: pointer; }
+    [dir="rtl"] .password-toggle-premium { right: auto; left: 1.25rem; }
+
+    .btn-auth-primary {
+        background: linear-gradient(135deg, #6366f1, #4f46e5); color: white; border: none; padding: 1rem; border-radius: 1rem;
+        font-weight: 700; display: flex; align-items: center; justify-content: center; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    .btn-auth-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(99, 102, 241, 0.3); }
+
+    .btn-premium-sm {
+        background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); color: white;
+        padding: 0.5rem 1rem; border-radius: 0.75rem; font-size: 0.85rem; font-weight: 600; transition: all 0.2s ease;
+    }
+    .btn-premium-sm:hover { background: rgba(255, 255, 255, 0.1); border-color: rgba(255, 255, 255, 0.2); }
+
+    .btn-link-premium { background: transparent; border: none; color: #6366f1; font-size: 0.85rem; font-weight: 600; transition: color 0.2s ease; }
+    .btn-link-premium:hover { color: #818cf8; }
+
+    .auth-footer-text { color: #94a3b8; font-size: 0.9rem; }
+    .auth-link { color: #6366f1; text-decoration: none; transition: color 0.2s ease; }
+    .auth-link:hover { color: #818cf8; }
+
+    .checkbox-premium { display: flex; align-items: center; position: relative; padding-left: 2rem; cursor: pointer; user-select: none; }
+    [dir="rtl"] .checkbox-premium { padding-left: 0; padding-right: 2rem; }
+    .checkbox-premium input { position: absolute; opacity: 0; cursor: pointer; }
+    .checkmark { position: absolute; top: 0; left: 0; height: 1.25rem; width: 1.25rem; background-color: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 0.375rem; transition: all 0.2s ease; }
+    [dir="rtl"] .checkmark { left: auto; right: 0; }
+    .checkbox-premium:hover input ~ .checkmark { background-color: rgba(255, 255, 255, 0.1); }
+    .checkbox-premium input:checked ~ .checkmark { background-color: #6366f1; border-color: #6366f1; }
+    .checkmark:after { content: ""; position: absolute; display: none; }
+    .checkbox-premium input:checked ~ .checkmark:after { display: block; }
+    .checkbox-premium .checkmark:after { left: 7px; top: 3px; width: 5px; height: 10px; border: solid white; border-width: 0 2px 2px 0; transform: rotate(45deg); }
+    .label-text { font-size: 0.9rem; color: #94a3b8; }
+
+    .alert-premium-danger { background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); color: #fca5a5; padding: 0.75rem 1rem; border-radius: 1rem; font-size: 0.875rem; }
+
+    .validation-error-premium { color: #ef4444; font-size: 0.75rem; margin-top: 0.25rem; list-style: none; padding: 0; }
+
+    .animate-float { animation: auth-float 6s ease-in-out infinite; }
+    @@keyframes auth-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+    .animate-scale-in { animation: auth-scaleIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+    @@keyframes auth-scaleIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+    .animate-shake { animation: auth-shake 0.5s cubic-bezier(.36,.07,.19,.97) both; }
+    @@keyframes auth-shake { 10%, 90% { transform: translate3d(-1px, 0, 0); } 20%, 80% { transform: translate3d(2px, 0, 0); } 30%, 50%, 70% { transform: translate3d(-4px, 0, 0); } 40%, 60% { transform: translate3d(4px, 0, 0); } }
+
+    .spinner-premium { width: 40px; height: 40px; border: 3px solid rgba(99, 102, 241, 0.1); border-top-color: #6366f1; border-radius: 50%; animation: auth-spin 1s linear infinite; }
+    @@keyframes auth-spin { to { transform: rotate(360deg); } }
+
+
+
+
+
+
+
+
+
+</style>
+
+
+@code {
+
+    private bool showPassword = false;
+
+    private void ToggleShowPassword()
+    {
+        showPassword = !showPassword;
+    }
+
+    private class Credentials
+    {
+        public string Password { get; set; } = string.Empty;
+    }
+
+
+
+
+
+
+
+
+
+
+
+    private bool isLoading = true;
+    private UserCredentials credentials = new();
+    private string message = string.Empty;
+    private bool showForgotPassword = false;
+    private ForgotPasswordModel resetModel = new();
+    private string resetMessage = string.Empty;
+    private string resetMessageClass = string.Empty;
+    private bool rememberMe = false;
+    private bool isArabic = false;
+
+  protected override async Task OnInitializedAsync()
+{
+    isLoading = true;
+    StateHasChanged();
+
+    // Load language
+    var savedLang = await JS.InvokeAsync<string>("localStorage.getItem", "lang");
+    isArabic = savedLang == "ar";
+
+    // Load auth from storage
+    await Auth.LoadFromStorageAsync();
+
+    if (!string.IsNullOrEmpty(Auth.IdToken))
+    {
+        // Returning user with valid session → go straight to expenses
+        ToastService.ShowToast(isArabic ? "مرحباً بعودتك!" : "Welcome back!", "success");
+        Nav.NavigateTo("expenses");
+        return;
+    }
+
+    // New user → stay on Login page, optionally fill saved email
+    var savedEmail = await JS.InvokeAsync<string>("localStorage.getItem", "savedEmail");
+    if (!string.IsNullOrEmpty(savedEmail))
+    {
+        credentials.Email = savedEmail;
+    }
+
+    isLoading = false;
+    StateHasChanged();
+}
+    
+    
+    
+    
+    
+    
+    
+    
+    private void ToggleLanguage()
+    {
+        isArabic = !isArabic;
+        JS.InvokeVoidAsync("localStorage.setItem", "lang", isArabic ? "ar" : "en");
+        StateHasChanged();
+    }
+
+    private async Task LoginUser()
+    {
+        message = string.Empty;
+
+        var (success, verified) = await Auth.SignInAsync(credentials.Email, credentials.Password);
+        if (!success)
+        {
+            message = isArabic ? "فشل تسجيل الدخول. تحقق من البيانات." : "Login failed. Please check your credentials.";
+            ToastService.ShowToast(message, "danger");
+            return;
+        }
+
+        if (!verified)
+        {
+            message = isArabic ? "يرجى التحقق من بريدك الإلكتروني قبل تسجيل الدخول." : "Please verify your email before logging in.";
+            ToastService.ShowToast(message, "warning");
+            return;
+        }
+
+        if (rememberMe)
+            await JS.InvokeVoidAsync("localStorage.setItem", "savedEmail", credentials.Email);
+        else
+            await JS.InvokeVoidAsync("localStorage.removeItem", "savedEmail");
+
+        ToastService.ShowToast(isArabic ? "تم تسجيل الدخول بنجاح!" : "Login successful!", "success");
+        Nav.NavigateTo("expenses");
+    }
+
+    private void CloseForgotPassword()
+    {
+        showForgotPassword = false;
+        resetModel = new();
+        resetMessage = string.Empty;
+    }
+
+    private async Task SendResetEmail()
+    {
+        resetMessage = string.Empty;
+        bool result = await Auth.SendPasswordResetEmailAsync(resetModel.Email);
+        if (result)
+        {
+            resetMessageClass = "alert-success";
+            resetMessage = isArabic ? "تم إرسال رابط إعادة التعيين." : "Password reset email sent!";
+            ToastService.ShowToast(resetMessage, "success");
+        }
+        else
+        {
+            resetMessageClass = "alert-danger";
+            resetMessage = isArabic ? "فشل إرسال البريد." : "Failed to send reset email.";
+            ToastService.ShowToast(resetMessage, "danger");
+        }
+    }
+}

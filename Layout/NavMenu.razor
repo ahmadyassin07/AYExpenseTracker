@@ -1,0 +1,83 @@
+﻿@using AYExpenseTracker.Services
+@inject FirebaseAuthService Auth
+@inject NavigationManager Nav
+@implements IDisposable
+
+<div class="top-row ps-3 navbar navbar-dark">
+
+
+    <div class="container-fluid">
+        <img class="navbar-brand m-auto " src="wallet.png" />
+        <a class="navbar-brand m-auto " href="/">AYExpenseTracker</a>
+
+
+
+
+
+    </div>
+
+
+
+
+
+
+
+   
+</div>
+
+<input type="checkbox" id="nav-toggle" class="navbar-toggler" hidden />
+
+<div class="nav-scrollable" onclick="document.getElementById('nav-toggle').checked = false;">
+    <nav class="nav flex-column">
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="home" Match="NavLinkMatch.All">
+                <span class="bi bi-house-door-fill me-2"></span> Home
+            </NavLink>
+        </div>
+
+        @if (!string.IsNullOrEmpty(Auth?.Email))
+        {
+
+           
+
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="expenses" Match="NavLinkMatch.Prefix">
+                    <span class="bi bi-wallet2 me-2"></span> Expenses
+                </NavLink>
+            </div>
+
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="categories" Match="NavLinkMatch.Prefix">
+                    <span class="bi bi-tags me-2"></span> Categories
+                </NavLink>
+            </div>
+
+            <div class="nav-item px-3 mt-auto">
+                <button class="nav-link btn btn-link text-start w-100" @onclick="Logout">
+                    <span class="bi bi-box-arrow-right me-2"></span> Logout
+                </button>
+            </div>
+        }
+        else
+        {
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="login">
+                    <span class="bi bi-box-arrow-in-right me-2"></span> Login
+                </NavLink>
+            </div>
+        }
+    </nav>
+</div>
+
+@code {
+    private async Task Logout()
+    {
+        await Auth.SignOutAsync();
+        Nav.NavigateTo("login");
+    }
+
+    public void Dispose()
+    {
+        // Any cleanup if needed
+    }
+}

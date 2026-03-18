@@ -1,0 +1,1054 @@
+@page "/scanreceipt"
+@using AYExpenseTracker.Models
+@using AYExpenseTracker.Services
+@inject IJSRuntime JS
+@inject FirebaseService Firebase
+@inject FirebaseAuthService Auth
+@inject NavigationManager Nav
+@inject ToastService ToastService
+@inject OcrService OcrService
+@implements IDisposable
+
+<PageTitle>Scan Receipt | AYExpenseTracker</PageTitle>
+
+<div class="page-content scan-page">
+
+    @* === Page Header === *@
+    <div class="page-header d-flex align-items-center justify-content-between">
+        <div>
+            <h1 class="page-title">📸 Scan Receipt</h1>
+            <p class="page-subtitle">Capture or upload a receipt to auto-extract expenses</p>
+        </div>
+        @if (step > 1)
+        {
+            <button class="btn btn-secondary btn-sm" @onclick="ResetAll">
+                <i class="bi bi-arrow-counterclockwise"></i> Start Over
+            </button>
+        }
+    </div>
+
+    @* === STEP INDICATOR === *@
+    <div class="step-bar mb-4">
+        @foreach (var s in new[] { (1, "Capture"), (2, "Review"), (3, "Confirm") })
+        {
+            <div class="step-item @(step == s.Item1 ? "active" : step > s.Item1 ? "done" : "")">
+                <div class="step-circle">
+                    @if (step > s.Item1)
+                    {
+                        <i class="bi bi-check-lg"></i>
+                    }
+                    else
+                    {
+                        <span>@s.Item1</span>
+                    }
+                </div>
+                <div class="step-label">@s.Item2</div>
+            </div>
+            @if (s.Item1 < 3)
+            {
+                <div class="step-line @(step > s.Item1 ? "done" : "")"></div>
+            }
+        }
+    </div>
+
+    @* ===========================
+       STEP 1: CAPTURE / UPLOAD
+       =========================== *@
+    @if (step == 1)
+    {
+        <div class="row g-4 animate-fade-in">
+
+            @* Camera Panel *@
+            <div class="col-12 col-md-7">
+                <div class="card">
+                    <div class="card-header d-flex align-items-center gap-2">
+                        <i class="bi bi-camera-video-fill" style="color:var(--primary)"></i>
+                        Live Camera
+                        <span class="ms-auto badge" style="background:var(--accent-light);color:var(--accent);font-size:0.7rem">
+                            <i class="bi bi-circle-fill me-1" style="font-size:0.5rem"></i>LIVE
+                        </span>
+                    </div>
+                    <div class="card-body p-0 position-relative">
+                        <div class="camera-wrapper">
+                            <video id="camera" autoplay playsinline></video>
+                            <canvas id="canvas" style="display:none;"></canvas>
+
+                            @* Scanner animation overlay *@
+                            <div class="scanner-overlay">
+                                <div class="scanner-corners">
+                                    <div class="corner tl"></div>
+                                    <div class="corner tr"></div>
+                                    <div class="corner bl"></div>
+                                    <div class="corner br"></div>
+                                </div>
+                                <div class="scanner-line"></div>
+                                <div class="scanner-hint">Position receipt within frame</div>
+                            </div>
+                        </div>
+
+                        @* Camera Error State *@
+                        @if (cameraError)
+                        {
+                            <div class="camera-error">
+                                <i class="bi bi-camera-video-off-fill"></i>
+                                <p>Camera unavailable</p>
+                                <small>Please allow camera access or use file upload</small>
+                            </div>
+                        }
+                    </div>
+                    <div class="card-body pt-3">
+                        <button class="btn btn-primary w-100 btn-lg" @onclick="CapturePhoto" disabled="@cameraError">
+                            <i class="bi bi-camera-fill me-2"></i>
+                            Capture Receipt
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            @* Upload Panel *@
+            <div class="col-12 col-md-5">
+                <div class="card h-100">
+                    <div class="card-header d-flex align-items-center gap-2">
+                        <i class="bi bi-upload" style="color:var(--accent)"></i>
+                        Upload Image
+                    </div>
+                    <div class="card-body d-flex flex-column gap-3">
+
+                        @* Upload Drop Zone *@
+                        <div id="receiptDropZone" class="upload-zone @(isDragging ? "dragging" : "")"
+                             @onclick="TriggerFileInput"
+                             @ondragover:preventDefault="true"
+                             @ondragenter="() => isDragging = true"
+                             @ondragleave="() => isDragging = false"
+                             @ondrop:preventDefault="true">
+                            <input type="file" id="receiptFileInput" accept="image/*" style="display:none"
+                                   @onchange="HandleFileUpload" />
+                            <div class="upload-zone-content">
+                                <i class="bi bi-cloud-arrow-up upload-icon"></i>
+                                <div class="upload-title">Drop photo here</div>
+                                <div class="upload-subtitle">or click to browse</div>
+                                <div class="upload-formats">JPG, PNG, HEIC, WEBP</div>
+                            </div>
+                        </div>
+
+                        @* Preview uploaded image if selected *@
+                        @if (!string.IsNullOrEmpty(uploadedPreview))
+                        {
+                            <div class="upload-preview animate-scale-in">
+                                <img src="@uploadedPreview" alt="Uploaded receipt" />
+                                <button class="btn btn-danger btn-sm upload-remove" @onclick="ClearUpload">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
+                            </div>
+                            <button class="btn btn-success w-100" @onclick="AnalyzeUploaded">
+                                <i class="bi bi-magic me-2"></i>
+                                Analyze This Receipt
+                            </button>
+                        }
+
+                        <div class="divider-text">
+                            <span>How it works</span>
+                        </div>
+
+                        <div class="how-steps">
+                            <div class="how-step">
+                                <div class="how-num">1</div>
+                                <div>Capture or upload your receipt photo</div>
+                            </div>
+                            <div class="how-step">
+                                <div class="how-num">2</div>
+                                <div>AI reads the amount, date & store</div>
+                            </div>
+                            <div class="how-step">
+                                <div class="how-num">3</div>
+                                <div>Review and save to your expenses</div>
+                            </div>
+                        </div>
+
+                        <div class="tip-box">
+                            <i class="bi bi-lightbulb-fill me-2" style="color:var(--warning)"></i>
+                            <span>For best results, ensure the receipt is flat, well-lit, and fully visible in frame.</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    @* ===========================
+       STEP 2: ANALYZING
+       =========================== *@
+    @if (step == 2 && isAnalyzing)
+    {
+        <div class="analyzing-screen animate-fade-in">
+            <div class="analyzing-card">
+                <div class="analyzing-icon">
+                    <svg class="loading-progress" style="width:80px;height:80px">
+                        <defs>
+                            <linearGradient id="pGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" stop-color="#6366f1" />
+                                <stop offset="100%" stop-color="#10b981" />
+                            </linearGradient>
+                        </defs>
+                        <circle class="track" r="35" cx="40" cy="40" />
+                        <circle class="progress" r="35" cx="40" cy="40" />
+                    </svg>
+                    <i class="bi bi-receipt analyzing-receipt-icon"></i>
+                </div>
+                <h4 class="fw-bold mt-3">Analyzing Receipt...</h4>
+                <p class="text-muted">AI is extracting amount, date & vendor</p>
+                <div class="analyzing-steps">
+                    @foreach (var (label, done) in analyzeSteps)
+                    {
+                        <div class="analyze-step @(done ? "done" : "pending")">
+                            <i class="bi @(done ? "bi-check-circle-fill" : "bi-circle") me-2"></i>
+                            @label
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+
+    @* ===========================
+       STEP 2: REVIEW CAPTURED IMAGE
+       =========================== *@
+    @if (step == 2 && !isAnalyzing)
+    {
+        <div class="row g-4 animate-fade-in">
+            @* Preview *@
+            <div class="col-12 col-md-5">
+                <div class="card h-100">
+                    <div class="card-header d-flex align-items-center gap-2">
+                        <i class="bi bi-image" style="color:var(--accent)"></i>
+                        Captured Receipt
+                    </div>
+                    <div class="card-body text-center">
+                        <img src="@capturedImage" class="receipt-preview-img" alt="Captured receipt" />
+                        <button class="btn btn-secondary mt-3 w-100" @onclick="ResetAll">
+                            <i class="bi bi-arrow-repeat me-1"></i> Retake / Different Image
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            @* OCR Raw Text *@
+            <div class="col-12 col-md-7">
+                <div class="card h-100">
+                    <div class="card-header d-flex align-items-center gap-2">
+                        <i class="bi bi-file-text" style="color:var(--primary)"></i>
+                        OCR Extracted Text
+                        @if (!string.IsNullOrEmpty(ocrLog))
+                        {
+                            <span class="ms-auto badge" style="background:var(--accent-light);color:var(--accent)">
+                                <i class="bi bi-check-circle me-1"></i>Found text
+                            </span>
+                        }
+                    </div>
+                    <div class="card-body">
+                        @if (!string.IsNullOrEmpty(ocrLog))
+                        {
+                            <div class="ocr-text-box">
+                                <pre>@ocrLog</pre>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="empty-state" style="padding:1.5rem 0">
+                                <i class="bi bi-file-earmark-x" style="font-size:2rem;opacity:0.3;display:block;margin-bottom:0.5rem"></i>
+                                <p style="font-size:0.85rem">No text could be extracted. Try retaking with better lighting.</p>
+                            </div>
+                        }
+                        <button class="btn btn-primary w-100 mt-3 btn-lg" @onclick="AnalyzeCaptured">
+                            <i class="bi bi-magic me-2"></i>
+                            Analyze Receipt
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    @* ===========================
+       STEP 3: EDIT & CONFIRM
+       =========================== *@
+    @if (step == 3 && scannedExpense != null)
+    {
+        <div class="row g-4 animate-fade-in">
+
+            @* Preview *@
+            <div class="col-12 col-md-4 d-none d-md-block">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="bi bi-image me-2" style="color:var(--accent)"></i> Receipt Photo
+                    </div>
+                    <div class="card-body text-center">
+                        <img src="@capturedImage" class="receipt-preview-img" alt="Receipt" />
+                    </div>
+                </div>
+
+                @* Confidence / OCR stats *@
+                <div class="card mt-3 p-3">
+                    <div class="stat-label mb-2">Scan Quality</div>
+                    <div class="d-flex align-items-center gap-2 mb-1">
+                        <div class="budget-bar-container flex-fill">
+                            <div class="budget-bar budget-ok" style="width:@(scanQuality)%"></div>
+                        </div>
+                        <span style="font-size:0.8rem;color:var(--accent);font-weight:700;flex-shrink:0">@scanQuality%</span>
+                    </div>
+                    <div style="font-size:0.75rem;color:var(--text-muted)">@scanQualityLabel</div>
+                </div>
+            </div>
+
+            @* Edit Form *@
+            <div class="col-12 col-md-8">
+                <div class="card">
+                    <div class="card-header d-flex align-items-center gap-2">
+                        <i class="bi bi-check2-circle" style="color:var(--accent)"></i>
+                        Review & Edit Extracted Data
+                        <span class="ms-auto badge" style="background:var(--accent-light);color:var(--accent)">
+                            <i class="bi bi-robot me-1"></i>AI Extracted
+                        </span>
+                    </div>
+                    <div class="card-body">
+
+                        @* Success summary bar *@
+                        <div class="result-summary-bar mb-4">
+                            <div class="result-summary-item">
+                                <i class="bi bi-currency-dollar" style="color:var(--accent)"></i>
+                                <div>
+                                    <div style="font-size:0.7rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em">Amount</div>
+                                    <div style="font-weight:700;color:var(--accent)">@scannedExpense.Amount.ToString("N2") KWD</div>
+                                </div>
+                            </div>
+                            <div class="result-summary-item">
+                                <i class="bi bi-calendar3" style="color:var(--primary)"></i>
+                                <div>
+                                    <div style="font-size:0.7rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em">Date</div>
+                                    <div style="font-weight:700">@scannedExpense.Date.ToString("MMM dd, yyyy")</div>
+                                </div>
+                            </div>
+                            <div class="result-summary-item">
+                                <i class="bi bi-shop" style="color:var(--warning)"></i>
+                                <div>
+                                    <div style="font-size:0.7rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em">Vendor</div>
+                                    <div style="font-weight:700;max-width:100px" class="text-truncate">@scannedExpense.Title</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        @* Edit Fields *@
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Title / Vendor *</label>
+                                <input type="text" class="form-control" @bind="scannedExpense.Title"
+                                       placeholder="Receipt vendor name" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Amount (KWD) *</label>
+                                <div class="input-group">
+                                    <span class="input-group-text" style="background:var(--bg-input);border-color:var(--border);color:var(--text-muted)">KWD</span>
+                                    <input type="number" class="form-control" @bind="scannedExpense.Amount" min="0.01" step="0.001" />
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Date</label>
+                                <input type="date" class="form-control"
+                                       value="@scannedExpense.Date.ToString("yyyy-MM-dd")"
+                                       @onchange="e => { if (DateTime.TryParse(e.Value?.ToString(), out var d)) scannedExpense.Date = d; }" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Category</label>
+                                <select class="form-select" @bind="scannedExpense.CategoryId" @bind:after="SyncCategory">
+                                    <option value="">— Select Category —</option>
+                                    @foreach (var cat in expenseCategories)
+                                    {
+                                        <option value="@cat.Id">@cat.Name</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">Notes / Description</label>
+                                <textarea class="form-control" @bind="scannedExpense.Description" rows="2"
+                                          placeholder="Optional notes from the receipt..."></textarea>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Type</label>
+                                <div class="type-selector">
+                                    <button type="button" class="type-btn @(scannedExpense.Type == TransactionType.Expense ? "active-expense" : "")"
+                                            @onclick="() => scannedExpense.Type = TransactionType.Expense">
+                                        <i class="bi bi-arrow-down-circle me-1"></i> Expense
+                                    </button>
+                                    <button type="button" class="type-btn @(scannedExpense.Type == TransactionType.Income ? "active-income" : "")"
+                                            @onclick="() => scannedExpense.Type = TransactionType.Income">
+                                        <i class="bi bi-arrow-up-circle me-1"></i> Income
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Recurring?</label>
+                                <div class="d-flex align-items-center gap-2 mt-2">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" @bind="scannedExpense.IsRecurring" />
+                                        <label class="form-check-label text-muted">@(scannedExpense.IsRecurring ? "Yes" : "No")</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        @* Save Actions *@
+                        <div class="d-flex gap-3 mt-4">
+                            <button class="btn btn-secondary flex-fill" @onclick="ResetAll">
+                                <i class="bi bi-x-circle me-1"></i> Cancel
+                            </button>
+                            <button class="btn btn-success flex-fill btn-lg" @onclick="SaveExpense" disabled="@isSaving">
+                                @if (isSaving)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                }
+                                else
+                                {
+                                    <i class="bi bi-check-circle-fill me-2"></i>
+                                }
+                                Save to Expenses
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+</div>
+
+<style>
+    /* === STEP BAR === */
+    .step-bar {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0;
+        padding: 0.5rem 0;
+    }
+
+    .step-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.375rem;
+    }
+
+    .step-circle {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: var(--bg-glass);
+        border: 2px solid var(--border);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.875rem;
+        font-weight: 700;
+        color: var(--text-muted);
+        transition: var(--transition);
+    }
+
+    .step-item.active .step-circle {
+        background: var(--primary-light);
+        border-color: var(--primary);
+        color: var(--primary);
+        box-shadow: 0 0 12px var(--primary-glow);
+    }
+
+    .step-item.done .step-circle {
+        background: var(--accent-light);
+        border-color: var(--accent);
+        color: var(--accent);
+    }
+
+    .step-label {
+        font-size: 0.72rem;
+        font-weight: 600;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+    }
+
+    .step-item.active .step-label { color: var(--primary); }
+    .step-item.done .step-label { color: var(--accent); }
+
+    .step-line {
+        flex: 1;
+        height: 2px;
+        background: var(--border);
+        margin: 0 0.5rem;
+        margin-bottom: 1.5rem;
+        max-width: 80px;
+        transition: var(--transition);
+    }
+
+    .step-line.done { background: var(--accent); }
+
+    /* === CAMERA === */
+    .camera-wrapper {
+        position: relative;
+        width: 100%;
+        aspect-ratio: 4/3;
+        background: #000;
+        overflow: hidden;
+    }
+
+    #camera {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+    }
+
+    /* === SCANNER ANIMATION === */
+    .scanner-overlay {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+    }
+
+    .scanner-corners {
+        position: absolute;
+        inset: 12%;
+    }
+
+    .corner {
+        position: absolute;
+        width: 24px;
+        height: 24px;
+        border-color: var(--primary);
+        border-style: solid;
+    }
+
+    .corner.tl { top: 0; left: 0; border-width: 3px 0 0 3px; border-radius: 4px 0 0 0; }
+    .corner.tr { top: 0; right: 0; border-width: 3px 3px 0 0; border-radius: 0 4px 0 0; }
+    .corner.bl { bottom: 0; left: 0; border-width: 0 0 3px 3px; border-radius: 0 0 0 4px; }
+    .corner.br { bottom: 0; right: 0; border-width: 0 3px 3px 0; border-radius: 0 0 4px 0; }
+
+    .scanner-line {
+        position: absolute;
+        left: 12%;
+        right: 12%;
+        height: 2px;
+        background: linear-gradient(90deg, transparent, var(--primary), transparent);
+        box-shadow: 0 0 8px var(--primary);
+        animation: scanLine 2s ease-in-out infinite;
+        top: 20%;
+    }
+
+    @@keyframes scanLine {
+        0% { top: 15%; opacity: 0.7; }
+        50% { top: 75%; opacity: 1; }
+        100% { top: 15%; opacity: 0.7; }
+    }
+
+    .scanner-hint {
+        position: absolute;
+        bottom: 8%;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 0.72rem;
+        font-weight: 600;
+        color: rgba(255,255,255,0.7);
+        background: rgba(0,0,0,0.5);
+        padding: 0.25rem 0.75rem;
+        border-radius: var(--radius-full);
+        white-space: nowrap;
+        letter-spacing: 0.05em;
+    }
+
+    .camera-error {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: rgba(10,15,30,0.9);
+        color: var(--text-muted);
+        gap: 0.5rem;
+    }
+
+    .camera-error i { font-size: 2.5rem; color: var(--danger); }
+    .camera-error p { color: var(--text-secondary); font-weight: 600; margin: 0; }
+    .camera-error small { font-size: 0.75rem; }
+
+    /* === UPLOAD ZONE === */
+    .upload-zone {
+        border: 2px dashed var(--border);
+        border-radius: var(--radius-lg);
+        padding: 2rem 1rem;
+        text-align: center;
+        cursor: pointer;
+        transition: var(--transition);
+        background: var(--bg-glass);
+    }
+
+    .upload-zone:hover, .upload-zone.dragging {
+        border-color: var(--primary);
+        background: var(--primary-light);
+    }
+
+    .upload-zone.dragging .upload-icon { color: var(--primary); transform: scale(1.2); }
+
+    .upload-icon {
+        font-size: 2.5rem;
+        color: var(--text-muted);
+        display: block;
+        margin-bottom: 0.75rem;
+        transition: var(--transition);
+    }
+
+    .upload-title {
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 0.25rem;
+    }
+
+    .upload-subtitle {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+    }
+
+    .upload-formats {
+        font-size: 0.7rem;
+        color: var(--text-muted);
+        margin-top: 0.5rem;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+    }
+
+    .upload-preview {
+        position: relative;
+        border-radius: var(--radius-md);
+        overflow: hidden;
+        background: #000;
+    }
+
+    .upload-preview img {
+        width: 100%;
+        max-height: 200px;
+        object-fit: contain;
+        display: block;
+    }
+
+    .upload-remove {
+        position: absolute;
+        top: 0.5rem;
+        right: 0.5rem;
+        width: 28px;
+        height: 28px;
+        padding: 0;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* === HOW IT WORKS === */
+    .divider-text {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        color: var(--text-muted);
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+    }
+
+    .divider-text::before, .divider-text::after {
+        content: '';
+        flex: 1;
+        height: 1px;
+        background: var(--border);
+    }
+
+    .how-steps { display: flex; flex-direction: column; gap: 0.625rem; }
+
+    .how-step {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+    }
+
+    .how-num {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: var(--primary-light);
+        color: var(--primary);
+        font-size: 0.7rem;
+        font-weight: 800;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .tip-box {
+        background: var(--warning-light);
+        border: 1px solid rgba(245,158,11,0.2);
+        border-radius: var(--radius-md);
+        padding: 0.75rem;
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+        display: flex;
+        align-items: flex-start;
+    }
+
+    /* === ANALYZING SCREEN === */
+    .analyzing-screen {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 50vh;
+    }
+
+    .analyzing-card {
+        text-align: center;
+        padding: 3rem 2rem;
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-xl);
+        max-width: 400px;
+        width: 100%;
+        box-shadow: var(--shadow-lg);
+    }
+
+    .analyzing-icon {
+        position: relative;
+        width: 80px;
+        height: 80px;
+        margin: 0 auto;
+    }
+
+    .analyzing-receipt-icon {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        color: var(--primary);
+    }
+
+    .analyzing-steps {
+        margin-top: 1.5rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        text-align: left;
+    }
+
+    .analyze-step {
+        font-size: 0.875rem;
+        padding: 0.5rem 0.75rem;
+        border-radius: var(--radius-sm);
+        transition: var(--transition);
+    }
+
+    .analyze-step.done {
+        background: var(--accent-light);
+        color: var(--accent);
+    }
+
+    .analyze-step.pending {
+        color: var(--text-muted);
+    }
+
+    /* === OCR TEXT BOX === */
+    .ocr-text-box {
+        background: var(--bg-base);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        padding: 1rem;
+        max-height: 220px;
+        overflow-y: auto;
+        font-family: 'Courier New', monospace;
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+        line-height: 1.6;
+    }
+
+    .ocr-text-box pre { margin: 0; white-space: pre-wrap; word-break: break-word; }
+
+    /* === RECEIPT PREVIEW === */
+    .receipt-preview-img {
+        max-height: 320px;
+        width: 100%;
+        object-fit: contain;
+        border-radius: var(--radius-md);
+        border: 1px solid var(--border);
+    }
+
+    /* === RESULT SUMMARY BAR === */
+    .result-summary-bar {
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+        background: var(--bg-glass);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        padding: 0.875rem 1rem;
+        flex-wrap: wrap;
+    }
+
+    .result-summary-item {
+        display: flex;
+        align-items: center;
+        gap: 0.625rem;
+        flex: 1;
+        min-width: 100px;
+    }
+
+    .result-summary-item > i { font-size: 1.25rem; }
+
+    /* === INPUT GROUP FIX === */
+    .input-group-text {
+        background: var(--bg-input) !important;
+        border-color: var(--border) !important;
+        color: var(--text-muted) !important;
+    }
+</style>
+
+@code {
+    private string? capturedImage;
+    private string? uploadedPreview;
+    private bool isDragging = false;
+    private bool cameraError = false;
+    private bool isAnalyzing = false;
+    private bool isSaving = false;
+    private string ocrLog = "";
+    private Expense? scannedExpense;
+    private List<Category> expenseCategories = new();
+    private int step = 1;
+    private int scanQuality = 0;
+    private DotNetObjectReference<ScanReceipt>? objRef;
+
+    public void Dispose()
+    {
+        objRef?.Dispose();
+    }
+
+    private List<(string Label, bool Done)> analyzeSteps = new()
+    {
+        ("Uploading image for processing", false),
+        ("Running OCR text recognition", false),
+        ("Extracting amounts and dates",  false),
+        ("Detecting vendor name",         false),
+        ("Parsing structured data",       false)
+    };
+
+    private string scanQualityLabel => scanQuality switch
+    {
+        >= 80 => "Excellent — all fields extracted",
+        >= 60 => "Good — most fields found",
+        >= 40 => "Fair — some fields may need editing",
+        _ => "Low — manual correction recommended"
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Auth.LoadFromStorageAsync();
+        if (string.IsNullOrEmpty(Auth.UserId)) { Nav.NavigateTo("login"); return; }
+        expenseCategories = (await Firebase.GetCategoriesAsync())
+            .Where(c => c.Type == CategoryType.Expense).ToList();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && step == 1)
+        {
+            objRef = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("initDropZone", "receiptDropZone", objRef);
+
+            try
+            {
+                await JS.InvokeVoidAsync("startCamera");
+            }
+            catch
+            {
+                cameraError = true;
+                StateHasChanged();
+            }
+        }
+    }
+
+    [JSInvokable]
+    public void HandleDroppedFile(string base64)
+    {
+        uploadedPreview = base64;
+        StateHasChanged();
+        ToastService.ShowToast("Image uploaded!", "success");
+    }
+
+    private async Task CapturePhoto()
+    {
+        try
+        {
+            capturedImage = await JS.InvokeAsync<string>("capturePhoto");
+            uploadedPreview = null;
+            step = 2;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowToast($"Capture failed: {ex.Message}", "danger");
+        }
+    }
+
+    private async Task HandleFileUpload(ChangeEventArgs e)
+    {
+        try
+        {
+            var base64 = await JS.InvokeAsync<string>("readFileAsBase64", "receiptFileInput");
+            if (!string.IsNullOrEmpty(base64))
+            {
+                uploadedPreview = base64;
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowToast("Could not read file: " + ex.Message, "danger");
+        }
+    }
+
+    private void TriggerFileInput()
+    {
+        JS.InvokeVoidAsync("clickElement", "receiptFileInput");
+    }
+
+    private void ClearUpload()
+    {
+        uploadedPreview = null;
+        StateHasChanged();
+    }
+
+    private async Task AnalyzeUploaded()
+    {
+        if (string.IsNullOrEmpty(uploadedPreview)) return;
+        capturedImage = uploadedPreview;
+        await RunOcrAnalysis();
+    }
+
+    private async Task AnalyzeCaptured()
+    {
+        await RunOcrAnalysis();
+    }
+
+    private async Task RunOcrAnalysis()
+    {
+        if (string.IsNullOrEmpty(capturedImage)) return;
+
+        step = 2;
+        isAnalyzing = true;
+        StateHasChanged();
+
+        // Animate the steps
+        for (int i = 0; i < analyzeSteps.Count; i++)
+        {
+            await Task.Delay(600);
+            analyzeSteps[i] = (analyzeSteps[i].Label, true);
+            StateHasChanged();
+        }
+
+        try
+        {
+            var words = await OcrService.ExtractWordsFromImageAsync(capturedImage);
+            var rawText = string.Join(" ", words.Select(w => w.Text));
+            ocrLog = rawText;
+
+            scannedExpense = OcrService.ParseExpenseFromWords(words, rawText);
+
+            if (scannedExpense == null || scannedExpense.Amount == 0)
+            {
+                scannedExpense ??= new Expense { Title = "Receipt", Date = DateTime.Today, Amount = 0 };
+                ToastService.ShowToast("Amount not detected. Please enter manually.", "warning");
+                scanQuality = 30;
+            }
+            else
+            {
+                // Calculate quality based on what was found
+                int q = 0;
+                if (scannedExpense.Amount > 0) q += 40;
+                if (!string.IsNullOrEmpty(rawText)) q += 20;
+                if (scannedExpense.Date.Date != DateTime.Today) q += 20; // date was parsed
+                if (scannedExpense.Title != "Receipt") q += 20; // vendor found
+                scanQuality = Math.Min(100, q);
+            }
+        }
+        catch (Exception ex)
+        {
+            ocrLog += "\n\nError: " + ex.Message;
+            ToastService.ShowToast("OCR error: " + ex.Message, "danger");
+            scannedExpense = new Expense { Title = "Receipt", Date = DateTime.Today, Amount = 0 };
+            scanQuality = 0;
+        }
+
+        isAnalyzing = false;
+        step = 3;
+        StateHasChanged();
+    }
+
+    private void SyncCategory()
+    {
+        if (scannedExpense == null) return;
+        var cat = expenseCategories.FirstOrDefault(c => c.Id == scannedExpense.CategoryId);
+        if (cat != null) scannedExpense.Category = cat.Name ?? "";
+    }
+
+    private async Task SaveExpense()
+    {
+        if (scannedExpense == null) return;
+        if (scannedExpense.Amount <= 0)
+        {
+            ToastService.ShowToast("Please enter a valid amount.", "warning");
+            return;
+        }
+
+        isSaving = true;
+        StateHasChanged();
+
+        await Firebase.AddExpenseAsync(scannedExpense);
+        ToastService.ShowToast("✅ Receipt saved to expenses!", "success");
+
+        Nav.NavigateTo("expenses");
+    }
+
+    private async Task ResetAll()
+    {
+        step = 1;
+        capturedImage = null;
+        uploadedPreview = null;
+        scannedExpense = null;
+        ocrLog = "";
+        cameraError = false;
+        scanQuality = 0;
+        isDragging = false;
+
+        // Reset analyze steps
+        analyzeSteps = analyzeSteps.Select(s => (s.Label, false)).ToList();
+
+        StateHasChanged();
+
+        try
+        {
+            await JS.InvokeVoidAsync("startCamera");
+        }
+        catch
+        {
+            cameraError = true;
+            StateHasChanged();
+        }
+    }
+}

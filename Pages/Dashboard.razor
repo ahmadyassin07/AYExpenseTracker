@@ -1,0 +1,425 @@
+@page "/dashboard"
+@using AYExpenseTracker.Models
+@using AYExpenseTracker.Services
+@inject StateService State
+@inject FirebaseAuthService Auth
+@inject NavigationManager Nav
+@inject ToastService ToastService
+@inject IntelligenceService Intel
+@inject IJSRuntime JS
+@implements IDisposable
+
+<PageTitle>Dashboard | AYExpenseTracker</PageTitle>
+
+<div class="page-content" dir="@(isArabic ? "rtl" : "ltr")">
+
+    @if (State.IsLoading)
+    {
+        <div class="loading-overlay">
+            <svg class="loading-progress">
+                <defs>
+                    <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" stop-color="#6366f1" />
+                        <stop offset="100%" stop-color="#10b981" />
+                    </linearGradient>
+                </defs>
+                <circle class="track" r="27" cx="30" cy="30" />
+                <circle class="progress" r="27" cx="30" cy="30" />
+            </svg>
+            <div class="loading-text">Loading<span class="dots"></span></div>
+        </div>
+    }
+
+    <div class="page-header d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4">
+        <div>
+            <h1 class="page-title">📊 @(isArabic ? "لوحة التحكم الذكية" : "Smart Dashboard")</h1>
+            <p class="page-subtitle">@(isArabic ? "تحليلات مدعومة بالذكاء الاصطناعي لوضعك المالي" : "AI-powered insights for your financial health")</p>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="btn-premium-outline-sm" @onclick="ExportToExcel">
+                <i class="bi bi-file-earmark-excel me-2"></i> @(isArabic ? "تصدير Excel" : "Export Excel")
+            </button>
+            <button class="btn-premium-sm" @onclick="ToggleLanguage">
+                <i class="bi bi-translate me-2"></i> @(isArabic ? "English" : "العربية")
+            </button>
+        </div>
+
+    </div>
+
+    @* Premium Header Section *@
+    <div class="glass-card mb-4 overflow-hidden border-0 position-relative" style="background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(16, 185, 129, 0.1));">
+        <div class="p-4 d-flex align-items-center justify-content-between flex-wrap gap-3">
+            <div class="d-flex align-items-center gap-4">
+                <div class="ai-icon-pulse">
+                    <i class="bi bi-stars"></i>
+                </div>
+                <div>
+                    <h4 class="fw-800 mb-1 text-white">@(isArabic ? "مرحباً بك في AYExpense" : "Welcome to AYExpense")</h4>
+                    <p class="text-white-50 mb-0">@(isArabic ? "إليك ملخص وضعك المالي اليوم" : "Here's your financial summary for today")</p>
+                </div>
+            </div>
+            <div class="daily-budget-card animate-scale-in">
+                <div class="db-label">@(isArabic ? "الميزانية اليومية المتاحة" : "Available Daily Budget")</div>
+                <div class="db-value">@dailyBudget.ToString("N2") <span class="db-currency">KWD</span></div>
+                <div class="db-footer">@(isArabic ? "بناءً على دخلك ومصاريفك الحالية" : "Based on your current income & expenses")</div>
+            </div>
+        </div>
+    </div>
+
+    @* AI Insights Section *@
+    <div class="row g-3 mb-4">
+        <div class="col-md-12">
+            <div class="glass-card ai-card p-4 h-100 position-relative overflow-hidden">
+                <div class="d-flex align-items-center gap-3 mb-3">
+                    <div class="ai-sparkle">
+                        <i class="bi bi-lightning-charge-fill"></i>
+                    </div>
+                    <h5 class="fw-800 mb-0">@(isArabic ? "رؤى الذكاء الاصطناعي" : "AI Financial Insights")</h5>
+                </div>
+                <div class="insight-grid">
+                    @foreach (var insight in aiInsights)
+                    {
+                        <div class="insight-pill animate-fade-in">
+                            <i class="bi @(insight.Contains("💡") ? "bi-lightbulb" : insight.Contains("📈") ? "bi-graph-up" : insight.Contains("📉") ? "bi-graph-down" : "bi-stars") text-primary"></i>
+                            <span>@insight</span>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* Recurring Transactions Detection *@
+    @if (recurringExpenses.Any())
+    {
+        <div class="glass-card mb-4 p-4 border-warning animate-slide-up" style="border-width: 1px; border-style: dashed; background: rgba(245, 158, 11, 0.02);">
+            <div class="d-flex align-items-center gap-2 mb-3">
+                <i class="bi bi-arrow-repeat text-warning fs-4"></i>
+                <h6 class="fw-800 mb-0">@(isArabic ? "المعاملات المتكررة المكتشفة" : "Recurring Transactions Detected")</h6>
+            </div>
+            <div class="row g-3">
+                @foreach (var tx in recurringExpenses)
+                {
+                    <div class="col-6 col-md-4">
+                        <div class="p-3 rounded-4" style="background: rgba(245, 158, 11, 0.05); border: 1px solid rgba(245, 158, 11, 0.1);">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="fw-600 small text-truncate me-2">@tx.Title</span>
+                                <span class="text-warning fw-bold small flex-shrink-0">@tx.Amount.ToString("N2")</span>
+                            </div>
+                            <div class="text-white-50 x-small mt-1">@tx.Category</div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
+    @* Stats Section *@
+    <div class="row g-3 mb-4 animate-slide-up">
+        <div class="col-6 col-md-3">
+            <div class="glass-card stat-card-premium p-3 text-center">
+                <div class="stat-label-premium">@(isArabic ? "المصاريف" : "Expenses")</div>
+                <div class="stat-value-premium text-danger">@currentMonthExpenses.ToString("N2")</div>
+                <div class="progress-premium mt-2">
+                    <div class="progress-bar-premium bg-danger" style="width: @(changePercent > 0 ? "100" : "70")%"></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="glass-card stat-card-premium p-3 text-center">
+                <div class="stat-label-premium">@(isArabic ? "الدخل" : "Income")</div>
+                <div class="stat-value-premium text-success">@currentMonthIncome.ToString("N2")</div>
+                <div class="progress-premium mt-2">
+                    <div class="progress-bar-premium bg-success" style="width: 85%"></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="glass-card stat-card-premium p-3 text-center">
+                <div class="stat-label-premium">@(isArabic ? "الصافي" : "Net")</div>
+                <div class="stat-value-premium text-primary">@netBalance.ToString("N2")</div>
+                <div class="progress-premium mt-2">
+                    <div class="progress-bar-premium bg-primary" style="width: 60%"></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="glass-card stat-card-premium p-3 text-center">
+                <div class="stat-label-premium">@(isArabic ? "التوفير" : "Savings")</div>
+                <div class="stat-value-premium text-warning">@(savingsRate.ToString("N1"))%</div>
+                <div class="progress-premium mt-2">
+                    <div class="progress-bar-premium bg-warning" style="width: @savingsRate%"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* Filters *@
+    <div class="glass-card mb-4 p-3 border-0">
+        <div class="row g-2 align-items-end">
+            <div class="col-md-4 col-6">
+                <label class="form-label small text-white-50">@(isArabic ? "من" : "From")</label>
+                <InputDate class="form-control-premium" @bind-Value="fromDate" />
+            </div>
+            <div class="col-md-4 col-6">
+                <label class="form-label small text-white-50">@(isArabic ? "إلى" : "To")</label>
+                <InputDate class="form-control-premium" @bind-Value="toDate" />
+            </div>
+            <div class="col-md-4 col-12 d-flex gap-2">
+                <button class="btn-premium-primary flex-fill" @onclick="ApplyFilters">
+                    <i class="bi bi-search me-2"></i> @(isArabic ? "بحث" : "Filter")
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4 mb-5">
+        <div class="col-lg-8">
+            <div class="glass-card p-4 h-100">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h6 class="fw-800 mb-0"><i class="bi bi-graph-up-arrow me-2 text-primary"></i>@(isArabic ? "اتجاه الإنفاق" : "Spending Trend")</h6>
+                    <span class="text-white-50 small">@(isArabic ? "آخر 6 أشهر" : "Last 6 Months")</span>
+                </div>
+                <canvas id="monthlyTrendChart" style="max-height:300px"></canvas>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="glass-card p-4 h-100">
+                <h6 class="fw-800 mb-4"><i class="bi bi-pie-chart me-2 text-primary"></i>@(isArabic ? "حسب الفئة" : "By Category")</h6>
+                <canvas id="expensesChart" style="max-height:250px"></canvas>
+            </div>
+        </div>
+    </div>
+
+    @* Month Comparison *@
+    <div class="row g-3 mt-2 animate-slide-up">
+        <div class="col-4">
+            <div class="glass-card p-3 text-center">
+                <div class="stat-label-premium mb-1">@(isArabic ? "الشهر الماضي" : "Last Month")</div>
+                <div class="stat-value-premium" style="color:#94a3b8">@lastMonthExpenses.ToString("N2")</div>
+            </div>
+        </div>
+        <div class="col-4">
+            <div class="glass-card p-3 text-center">
+                <div class="stat-label-premium mb-1">@(isArabic ? "التغيير" : "Change")</div>
+                <div class="stat-value-premium @(changePercent <= 0 ? "text-success" : "text-danger")">
+                    @(changePercent > 0 ? "+" : "")@changePercent.ToString("N1")%
+                </div>
+            </div>
+        </div>
+        <div class="col-4">
+            <div class="glass-card p-3 text-center">
+                <div class="stat-label-premium mb-1">@(isArabic ? "طريقة الدفع" : "Payment")</div>
+                <canvas id="paymentMethodChart" style="max-height:60px"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private bool isArabic = false;
+    private List<Expense> filteredExpenses = new();
+    private DateTime? fromDate = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+    private DateTime? toDate = DateTime.Today;
+
+    private decimal currentMonthExpenses => State.Expenses.Where(e => e.Type == TransactionType.Expense && e.Date.Month == DateTime.Today.Month && e.Date.Year == DateTime.Today.Year).Sum(e => e.Amount);
+    private decimal currentMonthIncome => State.Expenses.Where(e => e.Type == TransactionType.Income && e.Date.Month == DateTime.Today.Month && e.Date.Year == DateTime.Today.Year).Sum(e => e.Amount);
+    private decimal netBalance => currentMonthIncome - currentMonthExpenses;
+    private decimal lastMonthExpenses => State.Expenses.Where(e => e.Type == TransactionType.Expense && e.Date.Month == DateTime.Today.AddMonths(-1).Month && e.Date.Year == DateTime.Today.AddMonths(-1).Year).Sum(e => e.Amount);
+    private decimal changePercent => lastMonthExpenses > 0 ? (currentMonthExpenses - lastMonthExpenses) / lastMonthExpenses * 100m : 0m;
+    private string? topCategory => State.Expenses.Where(e => e.Type == TransactionType.Expense && e.Date.Month == DateTime.Today.Month).GroupBy(e => e.Category).OrderByDescending(g => g.Sum(x => x.Amount)).FirstOrDefault()?.Key;
+    private decimal topCategoryAmount => State.Expenses.Where(e => e.Type == TransactionType.Expense && e.Date.Month == DateTime.Today.Month && e.Category == topCategory).Sum(e => e.Amount);
+
+    private List<string> aiInsights = new();
+    private List<Expense> recurringExpenses = new();
+    private decimal savingsRate => currentMonthIncome > 0 ? (netBalance / currentMonthIncome) * 100m : 0m;
+    private decimal dailyBudget = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var savedLang = await JS.InvokeAsync<string>("localStorage.getItem", "lang");
+        isArabic = savedLang == "ar";
+
+        await Auth.LoadFromStorageAsync();
+        if (string.IsNullOrEmpty(Auth.UserId)) { Nav.NavigateTo("login"); return; }
+
+        State.OnChange += OnStateChange;
+        ApplyFilters();
+    }
+
+    private void OnStateChange()
+    {
+        ApplyFilters();
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void ApplyFilters()
+    {
+        filteredExpenses = State.Expenses
+            .Where(e => (!fromDate.HasValue || e.Date.Date >= fromDate.Value.Date) &&
+                        (!toDate.HasValue || e.Date.Date <= toDate.Value.Date))
+            .OrderByDescending(e => e.Date).ToList();
+
+        aiInsights = Intel.GetAIPersonalInsights(isArabic);
+        recurringExpenses = Intel.DetectRecurringTransactions();
+        dailyBudget = Intel.GetDailyBudget();
+        _ = RenderChartsAsync();
+    }
+
+    private async Task ExportToExcel()
+    {
+        if (!filteredExpenses.Any())
+        {
+            ToastService.ShowToast(isArabic ? "لا توجد بيانات للتصدير!" : "No data to export!", "warning");
+            return;
+        }
+
+        var exportData = filteredExpenses.Select(e => new
+        {
+            Title = e.Title,
+            Category = e.Category,
+            Type = e.Type.ToString(),
+            Amount = e.Amount,
+            Date = e.Date.ToString("yyyy-MM-dd"),
+            Description = e.Description
+        }).ToList();
+
+        await JS.InvokeVoidAsync("downloadExcelFromBlazor", "Expenses_Export.xlsx", exportData);
+        ToastService.ShowToast(isArabic ? "✅ تم تصدير Excel" : "✅ Excel exported!", "success");
+    }
+
+
+    private async Task RenderChartsAsync()
+    {
+        await Task.Delay(200);
+        var onlyExpenses = filteredExpenses.Where(e => e.Type == TransactionType.Expense).ToList();
+
+        // 1. Category Chart
+        if (onlyExpenses.Any())
+        {
+            var catGrouped = onlyExpenses.GroupBy(e => e.Category)
+                .Select(g => new { Category = g.Key, Total = g.Sum(x => x.Amount) })
+                .OrderByDescending(x => x.Total).ToList();
+            await JS.InvokeVoidAsync("renderExpensesChart", "expensesChart", catGrouped.Select(x => x.Category).ToArray(), catGrouped.Select(x => (double)x.Total).ToArray());
+        }
+
+        // 2. Payment Method Chart
+        if (onlyExpenses.Any())
+        {
+            var pmGrouped = onlyExpenses.GroupBy(e => e.PaymentMethod.ToString())
+                .Select(g => new { Method = g.Key, Total = g.Sum(x => x.Amount) })
+                .OrderByDescending(x => x.Total).ToList();
+            await JS.InvokeVoidAsync("renderPieChart", "paymentMethodChart", pmGrouped.Select(x => x.Method).ToArray(), pmGrouped.Select(x => (double)x.Total).ToArray());
+        }
+
+        // 3. Monthly Trend Chart
+        var trendData = State.Expenses.Where(e => e.Type == TransactionType.Expense)
+            .GroupBy(e => new { e.Date.Year, e.Date.Month })
+            .Select(g => new { Month = new DateTime(g.Key.Year, g.Key.Month, 1), Total = g.Sum(x => x.Amount) })
+            .OrderBy(x => x.Month)
+            .TakeLast(6).ToList();
+
+        if (trendData.Any())
+        {
+            await JS.InvokeVoidAsync("renderLineChart", "monthlyTrendChart", trendData.Select(x => x.Month.ToString("MMM yyyy")).ToArray(), trendData.Select(x => (double)x.Total).ToArray());
+        }
+    }
+
+    public void Dispose()
+    {
+        State.OnChange -= OnStateChange;
+    }
+
+    private void ToggleLanguage()
+    {
+        isArabic = !isArabic;
+        JS.InvokeVoidAsync("localStorage.setItem", "lang", isArabic ? "ar" : "en");
+        StateHasChanged();
+    }
+}
+
+<style>
+    .ai-assistant-wrapper { 
+        position: relative;
+    }
+    .ai-card {
+        background: rgba(15, 23, 42, 0.4);
+        border: 1px solid rgba(99, 102, 241, 0.2);
+        backdrop-filter: blur(10px);
+        border-radius: 1.5rem;
+    }
+    .ai-sparkle {
+        width: 32px; height: 32px;
+        background: linear-gradient(135deg, var(--primary), var(--accent));
+        border-radius: 8px;
+        display: flex; align-items: center; justify-content: center;
+        color: white; font-size: 0.9rem;
+    }
+    .ai-icon-pulse {
+        width: 56px;
+        height: 56px;
+        background: linear-gradient(135deg, #6366f1, #8b5cf6);
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.75rem;
+        color: white;
+        box-shadow: 0 0 25px rgba(99, 102, 241, 0.5);
+        animation: pulse-ai 2s infinite;
+    }
+    @@keyframes pulse-ai {
+        0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.4); }
+        50% { transform: scale(1.05); }
+        100% { transform: scale(1); box-shadow: 0 0 0 15px rgba(99, 102, 241, 0); }
+    }
+    
+    .daily-budget-card {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        padding: 1.25rem;
+        border-radius: 1.25rem;
+        min-width: 240px;
+    }
+    .db-label { font-size: 0.75rem; color: rgba(255,255,255,0.6); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem; }
+    .db-value { font-size: 1.75rem; font-weight: 800; color: white; }
+    .db-currency { font-size: 0.85rem; opacity: 0.7; font-weight: 400; }
+    .db-footer { font-size: 0.65rem; color: rgba(255,255,255,0.4); margin-top: 0.5rem; }
+
+    .insight-grid { display: flex; flex-direction: column; gap: 0.75rem; }
+    .insight-pill {
+        background: rgba(99, 102, 241, 0.05);
+        border: 1px solid rgba(99, 102, 241, 0.1);
+        padding: 0.75rem 1rem;
+        border-radius: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        font-size: 0.875rem;
+        transition: 0.2s;
+    }
+    .insight-pill:hover { background: rgba(99, 102, 241, 0.1); transform: translateX(5px); }
+
+    .stat-card-premium {
+        border: 1px solid rgba(255,255,255,0.05);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        backdrop-filter: blur(10px);
+        border-radius: 1.5rem;
+        background: rgba(255, 255, 255, 0.02);
+        position: relative;
+        overflow: hidden;
+    }
+    .stat-card-premium:hover { 
+        transform: translateY(-8px); 
+        background: rgba(255, 255, 255, 0.05);
+        border-color: rgba(99,102,241,0.4); 
+        box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+    }
+    .text-success { color: #10b981 !important; }
+    .text-danger { color: #ef4444 !important; }
+    .text-primary { color: #6366f1 !important; }
+    .text-warning { color: #f59e0b !important; }
+
+    /* RTL Specifics */
+    [dir="rtl"] .ai-icon-pulse { margin-left: 0; }
+</style>

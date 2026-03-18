@@ -1,0 +1,22 @@
+{
+  "name": "AY Expense Tracker",
+  "short_name": "ExpenseTracker",
+  "start_url": "/AYExpenseTracker/",
+  "display": "standalone",
+  "background_color": "#0a0f1e",
+  "theme_color": "#6366f1",
+  "icons": [
+    {
+      "src": "wallet.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "wallet.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

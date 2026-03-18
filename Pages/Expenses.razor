@@ -1,0 +1,712 @@
+@page "/expenses"
+@using AYExpenseTracker.Models
+@using AYExpenseTracker.Services
+@using Microsoft.AspNetCore.WebUtilities
+@inject StateService State
+@inject FirebaseAuthService Auth
+@inject NavigationManager Nav
+@inject ToastService ToastService
+@inject IJSRuntime JS
+@inject IntelligenceService Intel
+
+<PageTitle>Expenses & Income | AYExpenseTracker</PageTitle>
+
+<div class="page-content" dir="@(isArabic ? "rtl" : "ltr")">
+
+    @* === LOADING OVERLAY === *@
+    @if (State.IsLoading && !State.Expenses.Any())
+    {
+        <div class="loading-overlay">
+            <svg class="loading-progress">
+                <defs>
+                    <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" stop-color="#6366f1" />
+                        <stop offset="100%" stop-color="#10b981" />
+                    </linearGradient>
+                </defs>
+                <circle class="track" r="27" cx="30" cy="30" />
+                <circle class="progress" r="27" cx="30" cy="30" />
+            </svg>
+            <div class="loading-text">Loading<span class="dots"></span></div>
+        </div>
+    }
+
+    @* === PAGE HEADER === *@
+    <div class="page-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <div>
+            <h1 class="page-title">💰 @(isArabic ? "المعاملات المالية" : "Transactions")</h1>
+            <p class="page-subtitle">@(isArabic ? "تتبع مصروفاتك ودخلك" : "Track your expenses and income")</p>
+        </div>
+        <div class="d-flex gap-2 align-items-center">
+            <button class="btn btn-outline-light btn-sm" @onclick="ToggleLanguage">
+                <i class="bi bi-translate"></i>
+                @(isArabic ? "English" : "العربية")
+            </button>
+            <button class="btn btn-primary" @onclick="OpenAddExpenseModal">
+                <i class="bi bi-plus-lg"></i> @(isArabic ? "إضافة" : "Add")
+            </button>
+        </div>
+    </div>
+
+    @* === SUMMARY STATS === *@
+    <div class="row g-3 mb-4 animate-slide-up">
+        <div class="col-6 col-md-3">
+            <div class="stat-card">
+                <div class="stat-icon" style="background:var(--danger-light)">
+                    <i class="bi bi-arrow-down-circle" style="color:var(--danger)"></i>
+                </div>
+                <div class="stat-label">@(isArabic ? "المصروفات هذا الشهر" : "Expenses This Month")</div>
+                <div class="stat-value expense-amount">@monthlyExpenses.ToString("N2")</div>
+                <div class="stat-change text-muted">KWD</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-card">
+                <div class="stat-icon" style="background:var(--accent-light)">
+                    <i class="bi bi-arrow-up-circle" style="color:var(--accent)"></i>
+                </div>
+                <div class="stat-label">@(isArabic ? "الدخل هذا الشهر" : "Income This Month")</div>
+                <div class="stat-value income-amount">@monthlyIncome.ToString("N2")</div>
+                <div class="stat-change text-muted">KWD</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-card">
+                <div class="stat-icon" style="background:var(--primary-light)">
+                    <i class="bi bi-wallet2" style="color:var(--primary)"></i>
+                </div>
+                <div class="stat-label">@(isArabic ? "الرصيد الصافي" : "Net Balance")</div>
+                <div class="stat-value @(netBalance >= 0 ? "net-positive" : "net-negative")">@netBalance.ToString("N2")</div>
+                <div class="stat-change text-muted">KWD</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-card" style="cursor:pointer" @onclick="OpenAddExpenseModal">
+                <div class="stat-icon" style="background:var(--primary-light)">
+                    <i class="bi bi-plus-circle" style="color:var(--primary)"></i>
+                </div>
+                <div class="stat-label">@(isArabic ? "اليوم" : "Today")</div>
+                <div class="stat-value">@todayTotal.ToString("N2")</div>
+                <div class="stat-change" style="color:var(--primary)">@(isArabic ? "tap to add +" : "tap to add +")</div>
+            </div>
+        </div>
+    </div>
+
+    @* === TABS: EXPENSES / INCOME === *@
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-3">
+        <div class="type-selector">
+            <button class="type-btn @(activeTab == "all" ? "active-expense" : "")" @onclick='() => SetTab("all")'>
+                <i class="bi bi-list-ul me-1"></i> @(isArabic ? "الكل" : "All")
+            </button>
+            <button class="type-btn @(activeTab == "expense" ? "active-expense" : "")" @onclick='() => SetTab("expense")'>
+                <i class="bi bi-arrow-down-circle me-1"></i> @(isArabic ? "مصروفات" : "Expenses")
+            </button>
+            <button class="type-btn @(activeTab == "income" ? "active-income" : "")" @onclick='() => SetTab("income")'>
+                <i class="bi bi-arrow-up-circle me-1"></i> @(isArabic ? "دخل" : "Income")
+            </button>
+        </div>
+    </div>
+
+    @* === FILTERS === *@
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="row g-2 align-items-end">
+                <div class="col-md-3 col-6">
+                    <label class="form-label">@(isArabic ? "من تاريخ" : "From")</label>
+                    <InputDate class="form-control" @bind-Value="fromDate" />
+                </div>
+                <div class="col-md-3 col-6">
+                    <label class="form-label">@(isArabic ? "إلى تاريخ" : "To")</label>
+                    <InputDate class="form-control" @bind-Value="toDate" />
+                </div>
+                <div class="col-md-3 col-12">
+                    <label class="form-label">@(isArabic ? "الفئة" : "Category")</label>
+                    <InputSelect class="form-select" @bind-Value="selectedCategoryId">
+                        <option value="">— @(isArabic ? "الكل" : "All") —</option>
+                        @foreach (var c in FilteredCategories)
+                        {
+                            <option value="@c.Id">@c.Name</option>
+                        }
+                    </InputSelect>
+                </div>
+                <div class="col-md-3 col-12 d-flex gap-2">
+                    <button class="btn btn-primary flex-fill" @onclick="ApplyFilter">
+                        <i class="bi bi-search"></i> @(isArabic ? "تصفية" : "Filter")
+                    </button>
+                    <button class="btn btn-secondary" @onclick="ClearFilters">
+                        <i class="bi bi-x-circle"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* === TRANSACTIONS LIST === *@
+    <div class="card">
+        <div class="card-header d-flex align-items-center justify-content-between">
+            <span>
+                <i class="bi bi-list-ul me-2"></i>
+                @(isArabic ? "قائمة المعاملات" : "Transactions")
+            </span>
+            <span class="badge" style="background:var(--primary-light);color:var(--primary)">
+                @filteredTransactions.Count @(isArabic ? "معاملة" : "items")
+            </span>
+        </div>
+        <div class="card-body p-0">
+            @if (!filteredTransactions.Any())
+            {
+                <div class="empty-state">
+                    <i class="bi bi-inbox"></i>
+                    <h5>@(isArabic ? "لا توجد معاملات" : "No transactions yet")</h5>
+                    <p>@(isArabic ? "ابدأ بإضافة مصروف أو دخل" : "Add your first expense or income")</p>
+                    <button class="btn btn-primary mt-2" @onclick="OpenAddExpenseModal">
+                        <i class="bi bi-plus-lg"></i> @(isArabic ? "إضافة" : "Add Transaction")
+                    </button>
+                </div>
+            }
+            else
+            {
+                @* Desktop Table *@
+                <div class="d-none d-md-block table-responsive">
+                    <table class="table table-hover mb-0 align-middle">
+                        <thead>
+                            <tr>
+                                <th @onclick='() => SortBy("Title")' class="sortable-header">
+                                    @(isArabic ? "العنوان" : "Title") <span style="font-size:0.7rem;opacity:0.6">@GetArrow("Title")</span>
+                                </th>
+                                <th>@(isArabic ? "النوع" : "Type")</th>
+                                <th @onclick='() => SortBy("Category")' class="sortable-header">
+                                    @(isArabic ? "الفئة" : "Category") <span style="font-size:0.7rem;opacity:0.6">@GetArrow("Category")</span>
+                                </th>
+                                <th @onclick='() => SortBy("Amount")' class="sortable-header">
+                                    @(isArabic ? "المبلغ" : "Amount") <span style="font-size:0.7rem;opacity:0.6">@GetArrow("Amount")</span>
+                                </th>
+                                <th @onclick='() => SortBy("Date")' class="sortable-header">
+                                    @(isArabic ? "التاريخ" : "Date") <span style="font-size:0.7rem;opacity:0.6">@GetArrow("Date")</span>
+                                </th>
+                                <th>@(isArabic ? "الوصف" : "Notes")</th>
+                                <th class="text-end">@(isArabic ? "إجراءات" : "Actions")</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var tx in GetSortedTransactions())
+                            {
+                                <tr class="animate-fade-in">
+                                    <td>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <div class="transaction-icon" style="background:@(tx.Type == TransactionType.Income ? "var(--accent-light)" : "var(--danger-light)")">
+                                                <i class="bi @(tx.Type == TransactionType.Income ? "bi-arrow-up" : "bi-arrow-down")"
+                                                   style="color:@(tx.Type == TransactionType.Income ? "var(--accent)" : "var(--danger)")"></i>
+                                            </div>
+                                            <div>
+                                                <div class="fw-600">@tx.Title</div>
+                                                <div class="d-flex align-items-center gap-2 mt-1">
+                                                    @if (tx.IsRecurring)
+                                                    {
+                                                        <span class="badge-recurring"><i class="bi bi-arrow-repeat"></i> @tx.RecurringFrequency</span>
+                                                    }
+                                                    <span class="text-muted small"><i class="bi @GetPaymentIcon(tx.PaymentMethod)"></i> @tx.PaymentMethod</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge" style="background:@(tx.Type == TransactionType.Income ? "var(--accent-light)" : "var(--danger-light)");color:@(tx.Type == TransactionType.Income ? "var(--accent)" : "var(--danger)")">
+                                            @tx.Type
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="category-pill" style="background:var(--primary-light);color:var(--primary)">
+                                            @tx.Category
+                                        </span>
+                                    </td>
+                                    <td class="@(tx.Type == TransactionType.Income ? "income-amount" : "expense-amount") fw-bold">
+                                        @(tx.Type == TransactionType.Income ? "+" : "-")@tx.Amount.ToString("N2") KWD
+                                    </td>
+                                    <td class="text-muted" style="font-size:0.85rem">@tx.Date.ToString("MMM dd, yyyy")</td>
+                                    <td class="text-muted" style="font-size:0.85rem;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">@tx.Description</td>
+                                    <td class="text-end">
+                                        <button class="btn btn-sm btn-secondary me-1" @onclick="() => EditTransaction(tx)">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-danger" @onclick="() => DeleteTransaction(tx.Id)">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td colspan="3" class="fw-bold text-muted" style="font-size:0.8rem">@(isArabic ? "الإجمالي المرئي" : "Visible Total")</td>
+                                <td class="fw-bold">@filteredTransactions.Sum(x => x.Amount).ToString("N2") KWD</td>
+                                <td colspan="3"></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+
+                @* Mobile Cards *@
+                <div class="d-md-none p-3">
+                    @foreach (var tx in GetSortedTransactions())
+                    {
+                        bool isExpanded = expandedId == tx.Id;
+                        <div class="transaction-card mb-2" @onclick="() => ToggleExpand(tx.Id)">
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="transaction-icon" style="background:@(tx.Type == TransactionType.Income ? "var(--accent-light)" : "var(--danger-light)")">
+                                    <i class="bi @(tx.Type == TransactionType.Income ? "bi-arrow-up" : "bi-arrow-down")"
+                                       style="color:@(tx.Type == TransactionType.Income ? "var(--accent)" : "var(--danger)")"></i>
+                                </div>
+                                <div class="flex-grow-1 min-width-0">
+                                    <div class="fw-600 text-truncate">@tx.Title</div>
+                                    <div style="font-size:0.75rem;color:var(--text-muted)">
+                                        @tx.Category • @tx.Date.ToString("MMM dd") • <i class="bi @GetPaymentIcon(tx.PaymentMethod)"></i>
+                                        @if (tx.IsRecurring)
+                                        {
+                                            <span class="badge-recurring ms-1"><i class="bi bi-arrow-repeat"></i></span>
+                                        }
+                                    </div>
+                                </div>
+                                <div class="text-end flex-shrink-0">
+                                    <div class="fw-bold @(tx.Type == TransactionType.Income ? "income-amount" : "expense-amount")">
+                                        @(tx.Type == TransactionType.Income ? "+" : "-")@tx.Amount.ToString("N2")
+                                    </div>
+                                    <i class="bi @(isExpanded ? "bi-chevron-up" : "bi-chevron-down")" style="font-size:0.75rem;color:var(--text-muted)"></i>
+                                </div>
+                            </div>
+                            @if (isExpanded)
+                            {
+                                <div class="mt-3 pt-2 animate-slide-up" style="border-top:1px solid var(--border)">
+                                    @if (!string.IsNullOrWhiteSpace(tx.Description))
+                                    {
+                                        <p class="text-muted small mb-2">@tx.Description</p>
+                                    }
+                                    <div class="d-flex gap-2 justify-content-end">
+                                        <button class="btn btn-sm btn-secondary" @onclick:stopPropagation="true" @onclick="() => EditTransaction(tx)">
+                                            <i class="bi bi-pencil"></i> @(isArabic ? "تعديل" : "Edit")
+                                        </button>
+                                        <button class="btn btn-sm btn-danger" @onclick:stopPropagation="true" @onclick="() => DeleteTransaction(tx.Id)">
+                                            <i class="bi bi-trash"></i> @(isArabic ? "حذف" : "Delete")
+                                        </button>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                    <div class="p-3 text-end fw-bold" style="font-size:0.85rem;color:var(--text-secondary)">
+                        @(isArabic ? "الإجمالي:" : "Total:") 
+                        <span class="@(filteredTransactions.Sum(x=>x.Amount)>=0 ? "income-amount" : "expense-amount")">
+                            @filteredTransactions.Sum(x => x.Amount).ToString("N2") KWD
+                        </span>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@* === ADD/EDIT MODAL === *@
+@if (editingTx != null)
+{
+    <div class="modal fade show d-block" style="background:rgba(0,0,0,0.75)" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content animate-scale-in">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="bi @(string.IsNullOrEmpty(editingTx.Id) ? "bi-plus-circle" : "bi-pencil-square") me-2" style="color:var(--primary)"></i>
+                        @(string.IsNullOrEmpty(editingTx.Id)
+                            ? (isArabic ? "إضافة معاملة" : "Add Transaction")
+                            : (isArabic ? "تعديل المعاملة" : "Edit Transaction"))
+                    </h5>
+                    <button class="btn btn-sm btn-secondary" @onclick="CloseModal"><i class="bi bi-x-lg"></i></button>
+                </div>
+                <div class="modal-body">
+                    <EditForm Model="@editingTx" OnValidSubmit="@SaveTransaction">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary />
+
+                        @* Type Selector *@
+                        <div class="mb-3">
+                            <label class="form-label">@(isArabic ? "نوع المعاملة" : "Transaction Type")</label>
+                            <div class="type-selector">
+                                <button type="button" class="type-btn @(editingTx.Type == TransactionType.Expense ? "active-expense" : "")"
+                                        @onclick='() => { editingTx.Type = TransactionType.Expense; selectedCategoryIdModal = ""; }'>
+                                    <i class="bi bi-arrow-down-circle me-1"></i> @(isArabic ? "مصروف" : "Expense")
+                                </button>
+                                <button type="button" class="type-btn @(editingTx.Type == TransactionType.Income ? "active-income" : "")"
+                                        @onclick='() => { editingTx.Type = TransactionType.Income; selectedCategoryIdModal = ""; }'>
+                                    <i class="bi bi-arrow-up-circle me-1"></i> @(isArabic ? "دخل" : "Income")
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">@(isArabic ? "العنوان" : "Title") *</label>
+                                <InputText class="form-control" @bind-Value="editingTx.Title"
+                                           @oninput="OnTitleInput"
+                                           placeholder="@(isArabic ? "مثال: فاتورة الكهرباء" : "e.g. Electricity Bill")" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">@(isArabic ? "الفئة" : "Category") *</label>
+                                <InputSelect class="form-select" @bind-Value="selectedCategoryIdModal" @onchange="OnModalCategoryChanged">
+                                    <option value="">— @(isArabic ? "اختر الفئة" : "Select Category") —</option>
+                                    @foreach (var c in State.Categories.Where(c => (editingTx.Type == TransactionType.Expense ? c.Type == CategoryType.Expense : c.Type == CategoryType.Income) || c.Type == CategoryType.Expense))
+                                    {
+                                        <option value="@c.Id">@c.Name</option>
+                                    }
+                                </InputSelect>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">@(isArabic ? "المبلغ (KWD)" : "Amount (KWD)") *</label>
+                                <InputNumber class="form-control" @bind-Value="editingTx.Amount" min="0.01" step="0.01" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">@(isArabic ? "التاريخ" : "Date")</label>
+                                <InputDate class="form-control" @bind-Value="editingTx.Date" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">@(isArabic ? "متكرر؟" : "Recurring?")</label>
+                                <div class="d-flex align-items-center gap-2 mt-2">
+                                    <div class="form-check form-switch mb-0">
+                                        <InputCheckbox class="form-check-input" @bind-Value="editingTx.IsRecurring" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            @if (editingTx.IsRecurring)
+                            {
+                                <div class="col-md-4">
+                                    <label class="form-label">@(isArabic ? "تكرار كل" : "Frequency")</label>
+                                    <InputSelect class="form-select" @bind-Value="editingTx.RecurringFrequency">
+                                        <option value="@RecurringFrequency.Daily">@(isArabic ? "يومي" : "Daily")</option>
+                                        <option value="@RecurringFrequency.Weekly">@(isArabic ? "أسبوعي" : "Weekly")</option>
+                                        <option value="@RecurringFrequency.Monthly">@(isArabic ? "شهري" : "Monthly")</option>
+                                        <option value="@RecurringFrequency.Yearly">@(isArabic ? "سنوي" : "Yearly")</option>
+                                    </InputSelect>
+                                </div>
+                            }
+
+                             <div class="col-12">
+                                 <label class="form-label">@(isArabic ? "وسيلة الدفع" : "Payment Method")</label>
+                                 <div class="payment-method-selector">
+                                     @foreach (var pm in Enum.GetValues<PaymentMethod>())
+                                     {
+                                         var isSelected = editingTx.PaymentMethod == pm;
+                                         <button type="button" class="payment-pill @(isSelected ? "active" : "")" @onclick="() => editingTx.PaymentMethod = pm">
+                                             <i class="bi @GetPaymentIcon(pm)"></i>
+                                             <span>@pm</span>
+                                         </button>
+                                     }
+                                 </div>
+                             </div>
+
+                            <div class="col-12">
+                                <label class="form-label">@(isArabic ? "ملاحظات" : "Notes")</label>
+                                <InputTextArea class="form-control" @bind-Value="editingTx.Description" rows="2"
+                                               placeholder="@(isArabic ? "وصف اختياري..." : "Optional notes...")" />
+                            </div>
+                        </div>
+
+                        <div class="mt-4 d-flex gap-2 justify-content-end">
+                            <button type="button" class="btn btn-secondary" @onclick="CloseModal">@(isArabic ? "إلغاء" : "Cancel")</button>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-circle me-1"></i>
+                                @(string.IsNullOrEmpty(editingTx.Id) ? (isArabic ? "إضافة" : "Add") : (isArabic ? "تحديث" : "Update"))
+                            </button>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@* === DELETE CONFIRMATION MODAL === *@
+@if (showDeleteConfirm)
+{
+    <div class="modal fade show d-block" style="background:rgba(0,0,0,0.75)" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content animate-scale-in border-0 shadow-lg" style="background: var(--bg-surface); color: var(--text-primary);">
+                <div class="modal-header bg-danger text-white border-0">
+                    <h5 class="modal-title">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        @(isArabic ? "تأكيد الحذف" : "Confirm Deletion")
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="CancelDelete"></button>
+                </div>
+                <div class="modal-body py-4 text-center">
+                    <div class="mb-3">
+                        <i class="bi bi-trash3 text-danger" style="font-size: 3rem;"></i>
+                    </div>
+                    <p class="fs-5 mb-0">@(isArabic ? "هل أنت متأكد من حذف هذه المعاملة؟" : "Are you sure you want to delete this transaction?")</p>
+                    <p class="text-muted small"> @(isArabic ? "لا يمكن التراجع عن هذا الإجراء." : "This action cannot be undone.")</p>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-outline-secondary px-4" @onclick="CancelDelete">@(isArabic ? "إلغاء" : "Cancel")</button>
+                    <button type="button" class="btn btn-danger px-4" @onclick="ConfirmDelete">
+                        <i class="bi bi-trash me-1"></i> @(isArabic ? "حذف نهائياً" : "Delete Permanently")
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private bool isArabic = false;
+    private string activeTab = "all";
+    private string? expandedId;
+    private string? selectedCategoryId;
+    private string? selectedCategoryIdModal;
+    private bool showDeleteConfirm = false;
+    private string? txToDeleteId;
+
+    private DateTime? fromDate = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+    private DateTime? toDate = DateTime.Today;
+
+    private string filterSearch = "";
+    private List<Expense> filteredTransactions = new();
+    private Expense? editingTx;
+
+    private string sortColumn = "Date";
+    private bool sortAscending = false;
+
+    // Computed stats
+    private decimal monthlyExpenses => State.Expenses.Where(e => e.Type == TransactionType.Expense && e.Date.Month == DateTime.Today.Month && e.Date.Year == DateTime.Today.Year).Sum(e => e.Amount);
+    private decimal monthlyIncome => State.Expenses.Where(e => e.Type == TransactionType.Income && e.Date.Month == DateTime.Today.Month && e.Date.Year == DateTime.Today.Year).Sum(e => e.Amount);
+    private decimal netBalance => monthlyIncome - monthlyExpenses;
+    private decimal todayTotal => State.Expenses.Where(e => e.Date.Date == DateTime.Today).Sum(e => e.Amount);
+
+    private IEnumerable<Category> FilteredCategories => activeTab == "income"
+        ? State.Categories.Where(c => c.Type == CategoryType.Income)
+        : activeTab == "expense" ? State.Categories.Where(c => c.Type == CategoryType.Expense) : State.Categories;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var savedLang = await JS.InvokeAsync<string>("localStorage.getItem", "lang");
+        isArabic = savedLang == "ar";
+
+        await Auth.LoadFromStorageAsync();
+        if (string.IsNullOrEmpty(Auth.UserId)) { Nav.NavigateTo("login"); return; }
+
+        State.OnChange += StateHasChanged;
+        State.OnChange += ApplyFilter;
+
+        if (!State.Expenses.Any())
+        {
+            await State.InitializeAsync();
+        }
+        else
+        {
+            ApplyFilter();
+        }
+    }
+
+    public void Dispose()
+    {
+        State.OnChange -= StateHasChanged;
+        State.OnChange -= ApplyFilter;
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var uri = Nav.ToAbsoluteUri(Nav.Uri);
+        var q = QueryHelpers.ParseQuery(uri.Query);
+        bool needsNavigation = false;
+
+        if (q.TryGetValue("add", out var addV) && addV == "true")
+        {
+            needsNavigation = true;
+            await Task.Delay(100);
+            OpenAddExpenseModal();
+        }
+
+        if (q.TryGetValue("search", out var searchV))
+        {
+            filterSearch = searchV.ToString();
+            needsNavigation = true;
+            ApplyFilter();
+        }
+
+        if (needsNavigation)
+        {
+            var baseUri = Nav.Uri.Split('?')[0];
+            Nav.NavigateTo(baseUri, replace: true);
+        }
+    }
+
+    private void ToggleLanguage()
+    {
+        isArabic = !isArabic;
+        JS.InvokeVoidAsync("localStorage.setItem", "lang", isArabic ? "ar" : "en");
+    }
+
+    private void SetTab(string tab)
+    {
+        activeTab = tab;
+        ApplyFilter();
+    }
+
+    private void ApplyFilter() 
+    { 
+        var query = State.Expenses.AsEnumerable(); 
+        
+        if (activeTab == "expense") query = query.Where(e => e.Type == TransactionType.Expense); 
+        else if (activeTab == "income") query = query.Where(e => e.Type == TransactionType.Income); 
+        
+        if (!string.IsNullOrWhiteSpace(filterSearch)) 
+        { 
+            query = query.Where(e => (e.Title != null && e.Title.Contains(filterSearch, StringComparison.OrdinalIgnoreCase)) || (e.Description != null && e.Description.Contains(filterSearch, StringComparison.OrdinalIgnoreCase)) || (e.Category != null && e.Category.Contains(filterSearch, StringComparison.OrdinalIgnoreCase))); 
+        } 
+
+        if (fromDate.HasValue) query = query.Where(e => e.Date.Date >= fromDate.Value.Date);
+        if (toDate.HasValue) query = query.Where(e => e.Date.Date <= toDate.Value.Date);
+        if (!string.IsNullOrEmpty(selectedCategoryId)) query = query.Where(e => e.CategoryId == selectedCategoryId);
+
+        filteredTransactions = query.ToList(); 
+        StateHasChanged(); 
+    }
+
+    private void ClearFilters()
+    {
+        fromDate = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+        toDate = DateTime.Today;
+        selectedCategoryId = null;
+        filterSearch = "";
+        ApplyFilter();
+    }
+
+    private void OpenAddExpenseModal()
+    {
+        if (!State.Categories.Any())
+        {
+            ToastService.ShowToast(isArabic ? "أضف فئة أولاً!" : "Please add a category first!", "warning");
+            return;
+        }
+        editingTx = new Expense { Date = DateTime.Today };
+        selectedCategoryIdModal = "";
+    }
+
+    private void EditTransaction(Expense tx)
+    {
+        editingTx = new Expense
+        {
+            Id = tx.Id, Title = tx.Title, Amount = tx.Amount, Date = tx.Date,
+            Category = tx.Category, CategoryId = tx.CategoryId, Description = tx.Description,
+            Type = tx.Type, IsRecurring = tx.IsRecurring, RecurringFrequency = tx.RecurringFrequency
+        };
+        selectedCategoryIdModal = tx.CategoryId;
+    }
+
+    private void CloseModal() => editingTx = null;
+
+    private async Task SaveTransaction()
+    {
+        if (editingTx == null) return;
+
+        var cat = State.Categories.FirstOrDefault(c => c.Id == selectedCategoryIdModal);
+        if (cat != null) { editingTx.Category = cat.Name ?? ""; editingTx.CategoryId = cat.Id!; }
+
+        if (string.IsNullOrEmpty(editingTx.Id))
+        {
+            await State.AddExpenseAsync(editingTx);
+            ToastService.ShowToast(isArabic ? "✅ تم الحفظ" : "✅ Saved successfully", "success");
+        }
+        else
+        {
+            await State.UpdateExpenseAsync(editingTx);
+            ToastService.ShowToast(isArabic ? "✅ تم التحديث" : "✅ Updated successfully", "success");
+        }
+        
+        CloseModal();
+    }
+
+    private void DeleteTransaction(string? id)
+    {
+        if (string.IsNullOrEmpty(id)) return;
+        txToDeleteId = id;
+        showDeleteConfirm = true;
+    }
+
+    private async Task ConfirmDelete()
+    {
+        if (string.IsNullOrEmpty(txToDeleteId)) return;
+        await State.DeleteExpenseAsync(txToDeleteId);
+        ToastService.ShowToast(isArabic ? "🗑️ تم الحذف" : "🗑️ Deleted", "success");
+        showDeleteConfirm = false;
+        txToDeleteId = null;
+    }
+
+    private void CancelDelete()
+    {
+        showDeleteConfirm = false;
+        txToDeleteId = null;
+    }
+
+    private void OnModalCategoryChanged(ChangeEventArgs e)
+    {
+        if (editingTx == null) return;
+        var id = e.Value?.ToString();
+        var cat = State.Categories.FirstOrDefault(c => c.Id == id);
+        if (cat != null) { editingTx.CategoryId = cat.Id!; editingTx.Category = cat.Name ?? ""; }
+        selectedCategoryIdModal = id;
+    }
+
+    private void OnTitleInput(ChangeEventArgs e)
+    {
+        if (editingTx == null) return;
+        var title = e.Value?.ToString();
+        if (string.IsNullOrWhiteSpace(title)) return;
+        
+        editingTx.Title = title;
+        
+        // Predict category if not already set manually
+        if (string.IsNullOrEmpty(selectedCategoryIdModal))
+        {
+            var predictedId = Intel.PredictCategory(title, editingTx.Type == TransactionType.Expense ? CategoryType.Expense : CategoryType.Income);
+            if (!string.IsNullOrEmpty(predictedId))
+            {
+                selectedCategoryIdModal = predictedId;
+                var cat = State.Categories.FirstOrDefault(c => c.Id == predictedId);
+                if (cat != null) 
+                {
+                    editingTx.CategoryId = cat.Id!;
+                    editingTx.Category = cat.Name ?? "";
+                }
+            }
+        }
+    }
+
+    private void SortBy(string col)
+    {
+        if (sortColumn == col) sortAscending = !sortAscending;
+        else { sortColumn = col; sortAscending = true; }
+    }
+
+    private string GetArrow(string col) => sortColumn == col ? (sortAscending ? "▲" : "▼") : "▲";
+
+    private IEnumerable<Expense> GetSortedTransactions() => sortColumn switch
+    {
+        "Title" => sortAscending ? filteredTransactions.OrderBy(x => x.Title) : filteredTransactions.OrderByDescending(x => x.Title),
+        "Category" => sortAscending ? filteredTransactions.OrderBy(x => x.Category) : filteredTransactions.OrderByDescending(x => x.Category),
+        "Amount" => sortAscending ? filteredTransactions.OrderBy(x => x.Amount) : filteredTransactions.OrderByDescending(x => x.Amount),
+        "Date" => sortAscending ? filteredTransactions.OrderBy(x => x.Date) : filteredTransactions.OrderByDescending(x => x.Date),
+        _ => filteredTransactions
+    };
+
+    private void ToggleExpand(string? id) => expandedId = expandedId == id ? null : id;
+
+    private string GetPaymentIcon(PaymentMethod pm) => pm switch
+    {
+        PaymentMethod.Cash => "bi-cash-stack",
+        PaymentMethod.CreditCard => "bi-credit-card",
+        PaymentMethod.DebitCard => "bi-card-list",
+        PaymentMethod.BankTransfer => "bi-bank",
+        PaymentMethod.Online => "bi-globe",
+        PaymentMethod.Other => "bi-wallet2",
+        _ => "bi-wallet2"
+    };
+}
+
+

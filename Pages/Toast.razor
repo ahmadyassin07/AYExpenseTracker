@@ -1,0 +1,100 @@
+@using AYExpenseTracker.Services
+@inject ToastService ToastService
+
+<div class="toast-wrapper position-fixed end-0 p-3" style="top:70px;z-index:10500;min-width:280px;max-width:380px">
+    @if (!string.IsNullOrEmpty(toastMessage))
+    {
+        <div class="toast-card show animate-slide-up" role="alert">
+            <div class="toast-icon-wrap">
+                @if (toastType == "success")
+                { <i class="bi bi-check-circle-fill" style="color:var(--accent)"></i> }
+                else if (toastType == "danger")
+                { <i class="bi bi-x-circle-fill" style="color:var(--danger)"></i> }
+                else if (toastType == "warning")
+                { <i class="bi bi-exclamation-triangle-fill" style="color:var(--warning)"></i> }
+                else
+                { <i class="bi bi-info-circle-fill" style="color:var(--primary)"></i> }
+            </div>
+            <div class="toast-msg flex-grow-1">@toastMessage</div>
+            <button class="toast-close" @onclick="HideToast"><i class="bi bi-x"></i></button>
+            <div class="toast-progress" style="background:@GetProgressColor();animation:toastProgress @toastDuration ms linear forwards"></div>
+        </div>
+    }
+</div>
+
+<style>
+    .toast-card {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        background: var(--bg-surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        padding: 0.875rem 1rem;
+        box-shadow: var(--shadow-lg);
+        position: relative;
+        overflow: hidden;
+    }
+    .toast-icon-wrap { font-size: 1.1rem; flex-shrink: 0; }
+    .toast-msg { font-size: 0.875rem; color: var(--text-primary); font-weight: 500; }
+    .toast-close {
+        background: none; border: none; color: var(--text-muted);
+        cursor: pointer; padding: 0; font-size: 1rem; flex-shrink: 0;
+        transition: var(--transition);
+    }
+    .toast-close:hover { color: var(--text-primary); }
+    .toast-progress {
+        position: absolute;
+        bottom: 0; left: 0; height: 3px;
+        width: 100%;
+        border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+        transform-origin: left;
+    }
+    @@keyframes toastProgress {
+        from { transform: scaleX(1); }
+        to { transform: scaleX(0); }
+    }
+</style>
+
+@code {
+    private string toastMessage = string.Empty;
+    private string toastType = "success";
+    private int toastDuration = 3500;
+
+    protected override void OnInitialized()
+    {
+        ToastService.OnShow += ShowToast;
+    }
+
+    private string GetProgressColor() => toastType switch
+    {
+        "success" => "var(--accent)",
+        "danger" => "var(--danger)",
+        "warning" => "var(--warning)",
+        _ => "var(--primary)"
+    };
+
+    private void ShowToast(string message, string type)
+    {
+        toastMessage = message;
+        toastType = type;
+        StateHasChanged();
+
+        Task.Run(async () =>
+        {
+            await Task.Delay(toastDuration);
+            HideToast();
+        });
+    }
+
+    private void HideToast()
+    {
+        toastMessage = string.Empty;
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        ToastService.OnShow -= ShowToast;
+    }
+}
